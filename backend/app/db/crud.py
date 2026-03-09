@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -37,6 +38,16 @@ def get_node(session: Session, node_id: UUID) -> Node | None:
 
 
 def create_node(session: Session, payload: NodeCreate) -> Node:
+    duplicate_name = session.scalar(select(Node).where(Node.name == payload.name))
+    if duplicate_name is not None:
+        raise ValueError("Node name already exists")
+
+    duplicate_endpoint = session.scalar(
+        select(Node).where(Node.host == payload.host, Node.port == payload.port)
+    )
+    if duplicate_endpoint is not None:
+        raise ValueError("Node endpoint already exists")
+
     node = Node(
         name=payload.name,
         host=payload.host,
@@ -45,6 +56,10 @@ def create_node(session: Session, payload: NodeCreate) -> Node:
         is_active=payload.is_active,
     )
     session.add(node)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError as error:
+        session.rollback()
+        raise ValueError("Node violates uniqueness constraints") from error
     session.refresh(node)
     return node

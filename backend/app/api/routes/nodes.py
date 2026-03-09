@@ -16,7 +16,10 @@ def list_nodes(_: AdminAccess, session: DBSession) -> list[NodeRead]:
 
 @router.post("", response_model=NodeRead, status_code=status.HTTP_201_CREATED)
 def create_node(payload: NodeCreate, _: AdminAccess, session: DBSession) -> NodeRead:
-    return crud.create_node(session, payload)
+    try:
+        return crud.create_node(session, payload)
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
 
 
 @router.get("/{node_id}", response_model=NodeRead)
