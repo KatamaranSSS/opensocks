@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.db.models import AccessKey, Node, User
 from app.schemas.access_key import AccessKeyConfigRead, AccessKeyCreate
 from app.schemas.node import NodeCreate
-from app.schemas.user import UserCreate
+from app.schemas.user import UserConfigBundleRead, UserCreate
 
 
 def list_users(session: Session) -> list[User]:
@@ -154,4 +154,31 @@ def build_access_key_config(session: Session, access_key_id: UUID) -> AccessKeyC
         password=access_key.secret,
         tag=tag,
         ss_url=ss_url,
+    )
+
+
+def build_user_config_bundle(session: Session, user_id: UUID) -> UserConfigBundleRead:
+    user = get_user(session, user_id)
+    if user is None:
+        raise LookupError("User not found")
+
+    access_keys = list(
+        session.scalars(
+            select(AccessKey)
+            .where(AccessKey.user_id == str(user_id), AccessKey.is_active.is_(True))
+            .order_by(AccessKey.created_at.desc())
+        )
+    )
+
+    configs: list[AccessKeyConfigRead] = []
+    for access_key in access_keys:
+        node = session.get(Node, access_key.node_id)
+        if node is None or not node.is_active:
+            continue
+        configs.append(build_access_key_config(session, UUID(access_key.id)))
+
+    return UserConfigBundleRead(
+        user_id=UUID(user.id),
+        username=user.username,
+        configs=configs,
     )

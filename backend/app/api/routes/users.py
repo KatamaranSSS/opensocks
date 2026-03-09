@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.api.dependencies import AdminAccess, DBSession
 from app.db import crud
-from app.schemas.user import UserCreate, UserRead
+from app.schemas.user import UserConfigBundleRead, UserCreate, UserRead
 
 router = APIRouter(prefix="/users")
 
@@ -28,3 +28,11 @@ def get_user(user_id: UUID, _: AdminAccess, session: DBSession) -> UserRead:
     if user is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
     return user
+
+
+@router.get("/{user_id}/configs", response_model=UserConfigBundleRead)
+def get_user_configs(user_id: UUID, _: AdminAccess, session: DBSession) -> UserConfigBundleRead:
+    try:
+        return crud.build_user_config_bundle(session, user_id)
+    except LookupError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error

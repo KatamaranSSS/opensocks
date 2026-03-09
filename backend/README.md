@@ -16,6 +16,7 @@ FastAPI-based control plane for the OpenSocks project.
 - `GET /api/v1/users`
 - `POST /api/v1/users`
 - `GET /api/v1/users/{user_id}`
+- `GET /api/v1/users/{user_id}/configs`
 - `GET /api/v1/nodes`
 - `POST /api/v1/nodes`
 - `GET /api/v1/nodes/{node_id}`
