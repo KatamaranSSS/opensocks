@@ -41,6 +41,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Build API image
+        run: docker build -t opensocks-api:latest ./backend
+
+      - name: Export API image
+        run: docker save -o opensocks-api.tar opensocks-api:latest
+
       - name: Start SSH agent
         uses: webfactory/ssh-agent@v0.9.0
         with:

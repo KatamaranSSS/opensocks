@@ -1,7 +1,6 @@
 services:
   api:
-    build:
-      context: ../backend
+    image: ${OPENSOCKS_API_IMAGE:-opensocks-api:latest}
     container_name: opensocks-api
     restart: unless-stopped
     env_file:

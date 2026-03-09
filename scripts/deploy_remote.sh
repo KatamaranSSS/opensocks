@@ -15,7 +15,12 @@ if [[ ! -f "deploy/.env.server" ]]; then
   exit 1
 fi
 
-docker compose --env-file deploy/.env.server -f deploy/docker-compose.server.yml up --build -d
+if [[ -f "opensocks-api.tar" ]]; then
+  docker load -i opensocks-api.tar
+  rm -f opensocks-api.tar
+fi
+
+docker compose --env-file deploy/.env.server -f deploy/docker-compose.server.yml up -d
 docker compose --env-file deploy/.env.server -f deploy/docker-compose.server.yml ps
 curl --fail --silent http://127.0.0.1:18000/api/v1/health >/dev/null
 echo "Health check passed on http://127.0.0.1:18000/api/v1/health"
