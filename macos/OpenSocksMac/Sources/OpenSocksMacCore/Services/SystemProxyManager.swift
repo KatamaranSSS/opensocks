@@ -289,9 +289,11 @@ public actor MacOSSystemProxyManager: SystemProxyManaging {
                 server = line.split(separator: ":", maxSplits: 1).last?
                     .trimmingCharacters(in: .whitespacesAndNewlines)
             } else if line.hasPrefix("Port:") {
-                port = line.split(separator: ":", maxSplits: 1).last?
+                if let portValue = line.split(separator: ":", maxSplits: 1).last?
                     .trimmingCharacters(in: .whitespacesAndNewlines)
-                    .flatMap(Int.init)
+                {
+                    port = Int(portValue)
+                }
             }
         }
 
