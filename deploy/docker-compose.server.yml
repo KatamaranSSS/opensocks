@@ -7,7 +7,7 @@ services:
     env_file:
       - .env.server
     ports:
-      - "8000:8000"
+      - "127.0.0.1:18000:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -30,4 +30,3 @@ services:
 
 volumes:
   postgres_data:
-

@@ -17,4 +17,5 @@ fi
 
 docker compose --env-file deploy/.env.server -f deploy/docker-compose.server.yml up --build -d
 docker compose --env-file deploy/.env.server -f deploy/docker-compose.server.yml ps
-
+curl --fail --silent http://127.0.0.1:18000/api/v1/health >/dev/null
+echo "Health check passed on http://127.0.0.1:18000/api/v1/health"

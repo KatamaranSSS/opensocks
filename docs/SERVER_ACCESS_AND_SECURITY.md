@@ -6,6 +6,14 @@ You currently have one Ubuntu `24.04` server and root access to it.
 
 This is enough to start testing, but it is **not** the final security model.
 
+Current observed runtime on the server:
+
+- `Docker` is already installed and running
+- `ufw` is already active
+- an existing `x-ui / xray` stack is already using public ports including `443` and `2053`
+
+Because of that, OpenSocks must be deployed in a **coexistence mode** on this host.
+
 ## Important security note
 
 A root password was shared in chat. Because of that, the safe assumption is:
@@ -45,6 +53,12 @@ Minimum hardening after the first successful deploy:
 - disable direct root login if a deploy user is ready
 - keep unattended security updates enabled
 
+On this server specifically:
+
+- do **not** re-run generic firewall bootstrap blindly
+- do **not** touch ports `443` and `2053`
+- do **not** restart or reconfigure the existing `x-ui/xray` stack unless intended
+
 ## What GitHub Actions will need
 
 Repository secrets:
@@ -62,4 +76,13 @@ Repository secrets:
 3. create project directory
 4. upload server env file
 5. run first deployment
+
+## Coexistence mode for the current server
+
+For now OpenSocks should use:
+
+- API bind: `127.0.0.1:18000`
+- PostgreSQL: internal Docker network only
+
+This avoids conflicts with the existing VPN services and keeps the new API off the public internet until a proper reverse proxy or separate host is introduced.
 
