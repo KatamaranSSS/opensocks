@@ -127,16 +127,3 @@ struct ContentView: View {
         }
     }
 }
-
-#Preview {
-    ContentView(
-        viewModel: BootstrapViewModel(
-            apiClient: OpenSocksAPIClient(),
-            tokenStore: KeychainClientTokenStore(
-                service: "com.opensocks.macos.preview",
-                account: "client-token"
-            ),
-            baseURLStore: UserDefaultsBaseURLStore()
-        )
-    )
-}
