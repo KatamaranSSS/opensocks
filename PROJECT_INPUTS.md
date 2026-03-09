@@ -19,16 +19,16 @@ Initial practical model for current GitHub plan: `GitHub Actions -> tests -> SSH
 
 ### Server 1
 
-- Role: `test`
-- Host/IP:
+- Role: `single-server-test`
+- Host/IP: `109.71.246.216`
 - SSH port: `22`
-- SSH user:
-- OS:
-- Deploy path:
+- SSH user: `root`
+- OS: `Ubuntu 24.04`
+- Deploy path: `/opt/opensocks`
 
 ### Server 2
 
-- Role: `test`
+- Role: `not provisioned yet`
 - Host/IP:
 - SSH port: `22`
 - SSH user:
@@ -73,3 +73,5 @@ Initial practical model for current GitHub plan: `GitHub Actions -> tests -> SSH
 - Need to choose provider, regions and minimum instance size before infra work starts
 - Billing and traffic quotas are still not confirmed for MVP
 - GitHub environments for private repositories are not available on GitHub Free, so deployment will rely on repository secrets instead of environment secrets
+- Root password was provided in chat and must not be stored in the repository
+- Immediate security action: switch deployment to SSH key authentication and then rotate the current root password
