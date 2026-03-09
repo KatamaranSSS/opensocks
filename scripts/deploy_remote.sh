@@ -51,6 +51,22 @@ if [[ "${SSSERVER_ENABLED:-false}" == "true" ]]; then
 fi
 
 for attempt in {1..20}; do
+  if curl --fail --silent "http://127.0.0.1:${CLIENT_GATEWAY_PORT:-18080}/api/v1/client/bootstrap" \
+    -H "Authorization: Bearer invalid-token" >/dev/null 2>&1; then
+    break
+  fi
+
+  status_code="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+    "http://127.0.0.1:${CLIENT_GATEWAY_PORT:-18080}/api/v1/client/bootstrap" \
+    -H "Authorization: Bearer invalid-token" || true)"
+  if [[ "${status_code}" == "401" ]]; then
+    echo "Client gateway is reachable on http://127.0.0.1:${CLIENT_GATEWAY_PORT:-18080}"
+    break
+  fi
+  sleep 1
+done
+
+for attempt in {1..20}; do
   if curl --fail --silent http://127.0.0.1:18000/api/v1/health >/dev/null; then
     echo "Health check passed on http://127.0.0.1:18000/api/v1/health"
     exit 0

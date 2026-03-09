@@ -32,7 +32,8 @@ public final class BootstrapViewModel: ObservableObject {
         self.tokenStore = tokenStore
         self.settingsStore = baseURLStore
         self.localRunner = localRunner
-        self.baseURLString = baseURLStore.readBaseURL() ?? "http://127.0.0.1:18000"
+        let storedBaseURL = baseURLStore.readBaseURL()
+        self.baseURLString = Self.resolvedInitialBaseURL(storedBaseURL)
         self.clientToken = (try? tokenStore.readToken()) ?? ""
         self.proxyBinaryPath = baseURLStore.readProxyBinaryPath() ?? Self.defaultProxyBinaryPath()
         self.localSocksPort = baseURLStore.readLocalSocksPort() ?? "1086"
@@ -180,5 +181,18 @@ public final class BootstrapViewModel: ObservableObject {
         }
 
         return "sslocal"
+    }
+
+    private static func resolvedInitialBaseURL(_ storedValue: String?) -> String {
+        switch storedValue?.trimmingCharacters(in: .whitespacesAndNewlines) {
+        case nil, "", "http://127.0.0.1:18000":
+            return defaultAPIBaseURL()
+        case let value?:
+            return value
+        }
+    }
+
+    private static func defaultAPIBaseURL() -> String {
+        "http://109.71.246.216:18080"
     }
 }
