@@ -140,7 +140,7 @@ def build_access_key_config(session: Session, access_key_id: UUID) -> AccessKeyC
     if user is None:
         raise LookupError("User not found")
 
-    user_info = f"{access_key.cipher}:{access_key.secret}".encode("utf-8")
+    user_info = f"{access_key.cipher}:{access_key.secret}".encode()
     encoded_credential = urlsafe_b64encode(user_info).decode("utf-8").rstrip("=")
     tag = f"{user.username}-{access_key.name}"
     ss_url = f"ss://{encoded_credential}@{node.host}:{node.port}#{quote(tag)}"
