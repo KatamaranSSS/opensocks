@@ -18,7 +18,12 @@ def client() -> Generator[TestClient, None, None]:
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
-    testing_session_local = sessionmaker(bind=engine, autoflush=False, autocommit=False, future=True)
+    testing_session_local = sessionmaker(
+        bind=engine,
+        autoflush=False,
+        autocommit=False,
+        future=True,
+    )
     Base.metadata.create_all(bind=engine)
 
     def override_get_db_session() -> Generator[Session, None, None]:
