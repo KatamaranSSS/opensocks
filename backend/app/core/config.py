@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     environment: str = "development"
     api_prefix: str = "/api/v1"
+    admin_api_token: str = "change-this-token"
     database_url: str | None = None
     postgres_db: str | None = None
     postgres_user: str | None = None

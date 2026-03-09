@@ -38,3 +38,8 @@ def client() -> Generator[TestClient, None, None]:
         yield test_client
     app.dependency_overrides.clear()
     Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture
+def admin_headers() -> dict[str, str]:
+    return {"Authorization": "Bearer change-this-token"}
