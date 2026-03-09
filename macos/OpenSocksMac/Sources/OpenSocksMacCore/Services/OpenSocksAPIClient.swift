@@ -1,6 +1,6 @@
 import Foundation
 
-public enum OpenSocksClientError: LocalizedError, Equatable {
+public enum OpenSocksClientError: LocalizedError, Equatable, Sendable {
     case invalidBaseURL
     case missingClientToken
     case unauthorized
@@ -23,7 +23,7 @@ public enum OpenSocksClientError: LocalizedError, Equatable {
     }
 }
 
-public protocol OpenSocksAPIClientProtocol {
+public protocol OpenSocksAPIClientProtocol: Sendable {
     func fetchBootstrap(baseURL: URL, clientToken: String) async throws -> ClientBootstrap
 }
 
@@ -31,7 +31,7 @@ private struct APIErrorResponse: Decodable {
     let detail: String
 }
 
-public final class OpenSocksAPIClient: OpenSocksAPIClientProtocol {
+public final class OpenSocksAPIClient: OpenSocksAPIClientProtocol, @unchecked Sendable {
     private let session: URLSession
     private let decoder: JSONDecoder
 

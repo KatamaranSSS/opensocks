@@ -72,7 +72,7 @@ final class OpenSocksMacCoreTests: XCTestCase {
 }
 
 private struct MockAPIClient: OpenSocksAPIClientProtocol {
-    let result: Result<ClientBootstrap, Error>
+    let result: Result<ClientBootstrap, OpenSocksClientError>
 
     func fetchBootstrap(baseURL: URL, clientToken: String) async throws -> ClientBootstrap {
         _ = baseURL
@@ -81,7 +81,7 @@ private struct MockAPIClient: OpenSocksAPIClientProtocol {
     }
 }
 
-private final class InMemoryTokenStore: ClientTokenStore {
+private final class InMemoryTokenStore: ClientTokenStore, @unchecked Sendable {
     private var token: String?
 
     func readToken() throws -> String? {
@@ -97,7 +97,7 @@ private final class InMemoryTokenStore: ClientTokenStore {
     }
 }
 
-private final class InMemoryBaseURLStore: APIBaseURLStore {
+private final class InMemoryBaseURLStore: APIBaseURLStore, @unchecked Sendable {
     private var baseURL: String?
 
     func readBaseURL() -> String? {

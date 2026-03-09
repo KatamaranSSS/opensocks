@@ -1,18 +1,18 @@
 import Foundation
 import Security
 
-public protocol ClientTokenStore {
+public protocol ClientTokenStore: Sendable {
     func readToken() throws -> String?
     func writeToken(_ token: String) throws
     func deleteToken() throws
 }
 
-public protocol APIBaseURLStore {
+public protocol APIBaseURLStore: Sendable {
     func readBaseURL() -> String?
     func writeBaseURL(_ value: String)
 }
 
-public enum TokenStoreError: LocalizedError, Equatable {
+public enum TokenStoreError: LocalizedError, Equatable, Sendable {
     case unexpectedStatus(OSStatus)
     case invalidData
 
@@ -26,7 +26,7 @@ public enum TokenStoreError: LocalizedError, Equatable {
     }
 }
 
-public final class KeychainClientTokenStore: ClientTokenStore {
+public final class KeychainClientTokenStore: ClientTokenStore, @unchecked Sendable {
     private let service: String
     private let account: String
 
@@ -103,7 +103,7 @@ public final class KeychainClientTokenStore: ClientTokenStore {
     }
 }
 
-public final class UserDefaultsBaseURLStore: APIBaseURLStore {
+public final class UserDefaultsBaseURLStore: APIBaseURLStore, @unchecked Sendable {
     private let defaults: UserDefaults
     private let key: String
 
