@@ -37,13 +37,17 @@ struct ContentView: View {
 
     private var connectionForm: some View {
         VStack(alignment: .leading, spacing: 12) {
-            TextField("API base URL", text: $baseURLDraft)
-                .textFieldStyle(.roundedBorder)
-                .font(.system(.body, design: .monospaced))
+            AppKitTextField(
+                placeholder: "API base URL",
+                text: $baseURLDraft
+            )
+            .frame(height: 24)
 
-            TextField("Client token", text: $clientTokenDraft)
-                .textFieldStyle(.roundedBorder)
-                .font(.system(.body, design: .monospaced))
+            AppKitTextField(
+                placeholder: "Client token",
+                text: $clientTokenDraft
+            )
+            .frame(height: 24)
 
             HStack(spacing: 12) {
                 Button("Save Settings") {
