@@ -22,5 +22,15 @@ fi
 
 docker compose --env-file deploy/.env.server -f deploy/docker-compose.server.yml up -d
 docker compose --env-file deploy/.env.server -f deploy/docker-compose.server.yml ps
-curl --fail --silent http://127.0.0.1:18000/api/v1/health >/dev/null
-echo "Health check passed on http://127.0.0.1:18000/api/v1/health"
+
+for attempt in {1..20}; do
+  if curl --fail --silent http://127.0.0.1:18000/api/v1/health >/dev/null; then
+    echo "Health check passed on http://127.0.0.1:18000/api/v1/health"
+    exit 0
+  fi
+  sleep 2
+done
+
+echo "Health check failed after waiting for API readiness."
+docker compose --env-file deploy/.env.server -f deploy/docker-compose.server.yml logs api
+exit 1
