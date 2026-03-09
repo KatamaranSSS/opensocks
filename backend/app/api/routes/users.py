@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, status
 
 from app.api.dependencies import AdminAccess, DBSession
 from app.db import crud
-from app.schemas.user import UserConfigBundleRead, UserCreate, UserRead
+from app.schemas.user import UserClientTokenRead, UserConfigBundleRead, UserCreate, UserRead
 
 router = APIRouter(prefix="/users")
 
@@ -34,5 +34,29 @@ def get_user(user_id: UUID, _: AdminAccess, session: DBSession) -> UserRead:
 def get_user_configs(user_id: UUID, _: AdminAccess, session: DBSession) -> UserConfigBundleRead:
     try:
         return crud.build_user_config_bundle(session, user_id)
+    except LookupError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+
+
+@router.get("/{user_id}/client-token", response_model=UserClientTokenRead)
+def get_user_client_token(
+    user_id: UUID,
+    _: AdminAccess,
+    session: DBSession,
+) -> UserClientTokenRead:
+    try:
+        return crud.get_user_client_token(session, user_id)
+    except LookupError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+
+
+@router.post("/{user_id}/client-token/rotate", response_model=UserClientTokenRead)
+def rotate_user_client_token(
+    user_id: UUID,
+    _: AdminAccess,
+    session: DBSession,
+) -> UserClientTokenRead:
+    try:
+        return crud.rotate_user_client_token(session, user_id)
     except LookupError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error

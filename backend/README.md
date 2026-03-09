@@ -8,7 +8,7 @@ FastAPI-based control plane for the OpenSocks project.
 - node registry
 - user and access management
 - configuration delivery for clients
-- admin authentication later
+- admin and client token authentication
 
 ## Current API surface
 
@@ -17,6 +17,8 @@ FastAPI-based control plane for the OpenSocks project.
 - `POST /api/v1/users`
 - `GET /api/v1/users/{user_id}`
 - `GET /api/v1/users/{user_id}/configs`
+- `GET /api/v1/users/{user_id}/client-token`
+- `POST /api/v1/users/{user_id}/client-token/rotate`
 - `GET /api/v1/nodes`
 - `POST /api/v1/nodes`
 - `GET /api/v1/nodes/{node_id}`
@@ -25,10 +27,15 @@ FastAPI-based control plane for the OpenSocks project.
 - `GET /api/v1/access-keys/{access_key_id}`
 - `POST /api/v1/access-keys/{access_key_id}/deactivate`
 - `GET /api/v1/access-keys/{access_key_id}/config`
+- `GET /api/v1/client/bootstrap`
 
-All `users` and `nodes` endpoints require:
+Admin endpoints require:
 
 - `Authorization: Bearer <ADMIN_API_TOKEN>`
+
+Client bootstrap requires:
+
+- `Authorization: Bearer <USER_CLIENT_TOKEN>`
 
 ## Local development
 

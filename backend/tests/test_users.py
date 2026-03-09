@@ -26,3 +26,31 @@ def test_users_require_admin_token(client: TestClient) -> None:
     response = client.get("/api/v1/users")
 
     assert response.status_code == 401
+
+
+def test_rotate_user_client_token(client: TestClient, admin_headers: dict[str, str]) -> None:
+    create_response = client.post(
+        "/api/v1/users",
+        headers=admin_headers,
+        json={
+            "username": "rotate-me",
+            "email": "rotate-me@example.com",
+            "is_active": True,
+        },
+    )
+    user_id = create_response.json()["id"]
+
+    token_response = client.get(
+        f"/api/v1/users/{user_id}/client-token",
+        headers=admin_headers,
+    )
+    original_token = token_response.json()["client_token"]
+
+    rotate_response = client.post(
+        f"/api/v1/users/{user_id}/client-token/rotate",
+        headers=admin_headers,
+    )
+
+    assert rotate_response.status_code == 200
+    rotated_token = rotate_response.json()["client_token"]
+    assert rotated_token != original_token

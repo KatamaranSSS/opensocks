@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from app.db.models import AccessKey, Node, User
 from app.schemas.access_key import AccessKeyConfigRead, AccessKeyCreate
 from app.schemas.node import NodeCreate
-from app.schemas.user import UserConfigBundleRead, UserCreate
+from app.schemas.user import UserClientTokenRead, UserConfigBundleRead, UserCreate
 
 
 def list_users(session: Session) -> list[User]:
@@ -29,6 +29,7 @@ def create_user(session: Session, payload: UserCreate) -> User:
     user = User(
         username=payload.username,
         email=payload.email,
+        client_token=token_hex(24),
         is_active=payload.is_active,
     )
     session.add(user)
@@ -181,4 +182,36 @@ def build_user_config_bundle(session: Session, user_id: UUID) -> UserConfigBundl
         user_id=UUID(user.id),
         username=user.username,
         configs=configs,
+    )
+
+
+def get_user_by_client_token(session: Session, client_token: str) -> User | None:
+    return session.scalar(select(User).where(User.client_token == client_token))
+
+
+def get_user_client_token(session: Session, user_id: UUID) -> UserClientTokenRead:
+    user = get_user(session, user_id)
+    if user is None:
+        raise LookupError("User not found")
+
+    return UserClientTokenRead(
+        user_id=UUID(user.id),
+        username=user.username,
+        client_token=user.client_token,
+    )
+
+
+def rotate_user_client_token(session: Session, user_id: UUID) -> UserClientTokenRead:
+    user = get_user(session, user_id)
+    if user is None:
+        raise LookupError("User not found")
+
+    user.client_token = token_hex(24)
+    session.commit()
+    session.refresh(user)
+
+    return UserClientTokenRead(
+        user_id=UUID(user.id),
+        username=user.username,
+        client_token=user.client_token,
     )

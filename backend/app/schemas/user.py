@@ -23,6 +23,12 @@ class UserRead(BaseModel):
     updated_at: datetime
 
 
+class UserClientTokenRead(BaseModel):
+    user_id: UUID
+    username: str
+    client_token: str
+
+
 class UserConfigBundleRead(BaseModel):
     user_id: UUID
     username: str
