@@ -4,6 +4,14 @@ import SwiftUI
 
 struct ContentView: View {
     @ObservedObject var viewModel: BootstrapViewModel
+    @State private var baseURLDraft: String
+    @State private var clientTokenDraft: String
+
+    init(viewModel: BootstrapViewModel) {
+        self.viewModel = viewModel
+        _baseURLDraft = State(initialValue: viewModel.baseURLString)
+        _clientTokenDraft = State(initialValue: viewModel.clientToken)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -29,21 +37,23 @@ struct ContentView: View {
 
     private var connectionForm: some View {
         VStack(alignment: .leading, spacing: 12) {
-            TextField("API base URL", text: $viewModel.baseURLString)
+            TextField("API base URL", text: $baseURLDraft)
                 .textFieldStyle(.roundedBorder)
                 .font(.system(.body, design: .monospaced))
 
-            SecureField("Client token", text: $viewModel.clientToken)
+            TextField("Client token", text: $clientTokenDraft)
                 .textFieldStyle(.roundedBorder)
                 .font(.system(.body, design: .monospaced))
 
             HStack(spacing: 12) {
                 Button("Save Settings") {
+                    syncDraftsToViewModel()
                     viewModel.persistSettings()
                 }
 
                 Button("Load Configs") {
                     Task {
+                        syncDraftsToViewModel()
                         await viewModel.fetchBootstrap()
                     }
                 }
@@ -56,6 +66,11 @@ struct ContentView: View {
                 }
             }
         }
+    }
+
+    private func syncDraftsToViewModel() {
+        viewModel.baseURLString = baseURLDraft
+        viewModel.clientToken = clientTokenDraft
     }
 
     @ViewBuilder
