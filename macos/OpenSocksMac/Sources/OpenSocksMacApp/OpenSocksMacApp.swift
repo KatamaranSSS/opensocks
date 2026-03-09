@@ -23,7 +23,10 @@ struct OpenSocksMacApp: App {
         ),
         baseURLStore: UserDefaultsBaseURLStore(),
         localRunner: ShadowsocksLocalRunner(),
-        proxyProbe: LocalProxyProbe()
+        proxyProbe: LocalProxyProbe(),
+        systemProxyManager: MacOSSystemProxyManager(
+            snapshotStore: UserDefaultsSystemProxySnapshotStore()
+        )
     )
 
     var body: some Scene {

@@ -14,6 +14,8 @@ public protocol APIBaseURLStore: Sendable {
     func writeProxyBinaryPath(_ value: String)
     func readLocalSocksPort() -> String?
     func writeLocalSocksPort(_ value: String)
+    func readAutoConfigureSystemProxy() -> Bool
+    func writeAutoConfigureSystemProxy(_ value: Bool)
 }
 
 public enum TokenStoreError: LocalizedError, Equatable, Sendable {
@@ -112,17 +114,20 @@ public final class UserDefaultsBaseURLStore: APIBaseURLStore, @unchecked Sendabl
     private let baseURLKey: String
     private let proxyBinaryPathKey: String
     private let localSocksPortKey: String
+    private let autoConfigureSystemProxyKey: String
 
     public init(
         defaults: UserDefaults = .standard,
         baseURLKey: String = "opensocks.client.baseURL",
         proxyBinaryPathKey: String = "opensocks.client.proxyBinaryPath",
-        localSocksPortKey: String = "opensocks.client.localSocksPort"
+        localSocksPortKey: String = "opensocks.client.localSocksPort",
+        autoConfigureSystemProxyKey: String = "opensocks.client.autoConfigureSystemProxy"
     ) {
         self.defaults = defaults
         self.baseURLKey = baseURLKey
         self.proxyBinaryPathKey = proxyBinaryPathKey
         self.localSocksPortKey = localSocksPortKey
+        self.autoConfigureSystemProxyKey = autoConfigureSystemProxyKey
     }
 
     public func readBaseURL() -> String? {
@@ -147,5 +152,16 @@ public final class UserDefaultsBaseURLStore: APIBaseURLStore, @unchecked Sendabl
 
     public func writeLocalSocksPort(_ value: String) {
         defaults.set(value, forKey: localSocksPortKey)
+    }
+
+    public func readAutoConfigureSystemProxy() -> Bool {
+        if defaults.object(forKey: autoConfigureSystemProxyKey) == nil {
+            return true
+        }
+        return defaults.bool(forKey: autoConfigureSystemProxyKey)
+    }
+
+    public func writeAutoConfigureSystemProxy(_ value: Bool) {
+        defaults.set(value, forKey: autoConfigureSystemProxyKey)
     }
 }

@@ -7,6 +7,7 @@ public final class BootstrapViewModel: ObservableObject {
     @Published public var clientToken: String
     @Published public var proxyBinaryPath: String
     @Published public var localSocksPort: String
+    @Published public var autoConfigureSystemProxy: Bool
     @Published public private(set) var username: String = ""
     @Published public private(set) var configs: [ClientConfig] = []
     @Published public private(set) var isLoading = false
@@ -17,30 +18,37 @@ public final class BootstrapViewModel: ObservableObject {
     @Published public private(set) var activeAccessKeyID: UUID?
     @Published public private(set) var isLocalProxyListening = false
     @Published public private(set) var proxyLogOutput: String = ""
+    @Published public private(set) var systemProxyStatusMessage: String = "System proxy disabled"
+    @Published public private(set) var systemProxyErrorMessage: String?
+    @Published public private(set) var isSystemProxyEnabled = false
 
     private let apiClient: OpenSocksAPIClientProtocol
     private let tokenStore: ClientTokenStore
     private let settingsStore: APIBaseURLStore
     private let localRunner: ShadowsocksLocalRunnerProtocol
     private let proxyProbe: LocalProxyProbeProtocol
+    private let systemProxyManager: SystemProxyManaging
 
     public init(
         apiClient: OpenSocksAPIClientProtocol,
         tokenStore: ClientTokenStore,
         baseURLStore: APIBaseURLStore,
         localRunner: ShadowsocksLocalRunnerProtocol,
-        proxyProbe: LocalProxyProbeProtocol
+        proxyProbe: LocalProxyProbeProtocol,
+        systemProxyManager: SystemProxyManaging
     ) {
         self.apiClient = apiClient
         self.tokenStore = tokenStore
         self.settingsStore = baseURLStore
         self.localRunner = localRunner
         self.proxyProbe = proxyProbe
+        self.systemProxyManager = systemProxyManager
         let storedBaseURL = baseURLStore.readBaseURL()
         self.baseURLString = Self.resolvedInitialBaseURL(storedBaseURL)
         self.clientToken = (try? tokenStore.readToken()) ?? ""
         self.proxyBinaryPath = baseURLStore.readProxyBinaryPath() ?? Self.defaultProxyBinaryPath()
         self.localSocksPort = baseURLStore.readLocalSocksPort() ?? "1086"
+        self.autoConfigureSystemProxy = baseURLStore.readAutoConfigureSystemProxy()
 
         self.localRunner.onTermination = { [weak self] status in
             guard let self else {
@@ -70,6 +78,7 @@ public final class BootstrapViewModel: ObservableObject {
 
         Task { [weak self] in
             await self?.refreshLocalProxyState()
+            await self?.refreshSystemProxyState()
         }
     }
 
@@ -82,6 +91,7 @@ public final class BootstrapViewModel: ObservableObject {
         settingsStore.writeLocalSocksPort(
             localSocksPort.trimmingCharacters(in: .whitespacesAndNewlines)
         )
+        settingsStore.writeAutoConfigureSystemProxy(autoConfigureSystemProxy)
 
         let trimmedToken = clientToken.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
@@ -140,6 +150,9 @@ public final class BootstrapViewModel: ObservableObject {
                     Stop that process or choose a different local SOCKS5 port.
                     """
                 }
+                if autoConfigureSystemProxy {
+                    await enableSystemProxy()
+                }
                 return
             }
 
@@ -154,6 +167,9 @@ public final class BootstrapViewModel: ObservableObject {
                 activeAccessKeyID = config.id
                 proxyStatusMessage = "Connected via \(config.name) on socks5://127.0.0.1:\(socksPort)"
                 proxyErrorMessage = nil
+                if autoConfigureSystemProxy {
+                    await enableSystemProxy()
+                }
             } else {
                 isLocalProxyListening = false
                 activeAccessKeyID = nil
@@ -174,6 +190,9 @@ public final class BootstrapViewModel: ObservableObject {
         proxyLogOutput = localRunner.latestLogOutput
         proxyErrorMessage = nil
         await refreshLocalProxyState()
+        if isSystemProxyEnabled {
+            await disableSystemProxy()
+        }
     }
 
     public func isActive(config: ClientConfig) -> Bool {
@@ -204,6 +223,42 @@ public final class BootstrapViewModel: ObservableObject {
         !isLocalProxyListening || isActive(config: config)
     }
 
+    public func refreshSystemProxyState() async {
+        do {
+            let status = try await systemProxyManager.currentStatus()
+            applySystemProxyStatus(status)
+        } catch {
+            isSystemProxyEnabled = false
+            systemProxyStatusMessage = "System proxy status unavailable"
+            systemProxyErrorMessage = resolvedErrorMessage(for: error)
+        }
+    }
+
+    public func enableSystemProxy() async {
+        systemProxyErrorMessage = nil
+
+        do {
+            let socksPort = try resolvedLocalSocksPort()
+            let status = try await systemProxyManager.enableLocalSOCKSProxy(port: socksPort)
+            applySystemProxyStatus(status)
+        } catch {
+            isSystemProxyEnabled = false
+            systemProxyStatusMessage = "System proxy disabled"
+            systemProxyErrorMessage = resolvedErrorMessage(for: error)
+        }
+    }
+
+    public func disableSystemProxy() async {
+        systemProxyErrorMessage = nil
+
+        do {
+            let status = try await systemProxyManager.disableManagedSOCKSProxy()
+            applySystemProxyStatus(status)
+        } catch {
+            systemProxyErrorMessage = resolvedErrorMessage(for: error)
+        }
+    }
+
     private func resolvedBaseURL() throws -> URL {
         let trimmedValue = baseURLString.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let url = URL(string: trimmedValue), url.scheme != nil, url.host != nil else {
@@ -225,6 +280,21 @@ public final class BootstrapViewModel: ObservableObject {
             return message
         }
         return error.localizedDescription
+    }
+
+    private func applySystemProxyStatus(_ status: SystemSOCKSProxyStatus) {
+        isSystemProxyEnabled = status.enabled
+
+        if status.enabled, let serviceName = status.serviceName, let server = status.server, let port = status.port
+        {
+            systemProxyStatusMessage = "System SOCKS proxy is enabled on \(serviceName) via \(server):\(port)"
+        } else if let serviceName = status.serviceName {
+            systemProxyStatusMessage = "System proxy is disabled for \(serviceName)"
+        } else {
+            systemProxyStatusMessage = "System proxy disabled"
+        }
+
+        systemProxyErrorMessage = nil
     }
 
     private static func defaultProxyBinaryPath() -> String {

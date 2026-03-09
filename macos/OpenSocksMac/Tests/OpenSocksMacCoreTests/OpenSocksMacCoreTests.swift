@@ -71,7 +71,8 @@ final class OpenSocksMacCoreTests: XCTestCase {
             tokenStore: InMemoryTokenStore(),
             baseURLStore: InMemoryBaseURLStore(),
             localRunner: MockLocalRunner(),
-            proxyProbe: MockLocalProxyProbe(isListening: true)
+            proxyProbe: MockLocalProxyProbe(isListening: true),
+            systemProxyManager: MockSystemProxyManager()
         )
         viewModel.baseURLString = "http://127.0.0.1:18000"
         viewModel.clientToken = "client-token"
@@ -91,7 +92,8 @@ final class OpenSocksMacCoreTests: XCTestCase {
             tokenStore: InMemoryTokenStore(),
             baseURLStore: InMemoryBaseURLStore(),
             localRunner: MockLocalRunner(),
-            proxyProbe: MockLocalProxyProbe(isListening: false)
+            proxyProbe: MockLocalProxyProbe(isListening: false),
+            systemProxyManager: MockSystemProxyManager()
         )
         viewModel.baseURLString = "http://127.0.0.1:18000"
         viewModel.clientToken = "bad-token"
@@ -125,7 +127,8 @@ final class OpenSocksMacCoreTests: XCTestCase {
             tokenStore: InMemoryTokenStore(),
             baseURLStore: InMemoryBaseURLStore(),
             localRunner: runner,
-            proxyProbe: MockLocalProxyProbe(isListening: true)
+            proxyProbe: MockLocalProxyProbe(isListening: true),
+            systemProxyManager: MockSystemProxyManager()
         )
         viewModel.proxyBinaryPath = "/opt/homebrew/bin/sslocal"
         viewModel.localSocksPort = "1086"
@@ -163,7 +166,8 @@ final class OpenSocksMacCoreTests: XCTestCase {
             tokenStore: InMemoryTokenStore(),
             baseURLStore: InMemoryBaseURLStore(),
             localRunner: MockLocalRunner(),
-            proxyProbe: MockLocalProxyProbe(isListening: false)
+            proxyProbe: MockLocalProxyProbe(isListening: false),
+            systemProxyManager: MockSystemProxyManager()
         )
         viewModel.localSocksPort = "abc"
 
@@ -199,7 +203,8 @@ final class OpenSocksMacCoreTests: XCTestCase {
             tokenStore: InMemoryTokenStore(),
             baseURLStore: InMemoryBaseURLStore(),
             localRunner: runner,
-            proxyProbe: MockLocalProxyProbe(isListening: true)
+            proxyProbe: MockLocalProxyProbe(isListening: true),
+            systemProxyManager: MockSystemProxyManager()
         )
         viewModel.localSocksPort = "1086"
 
@@ -212,6 +217,47 @@ final class OpenSocksMacCoreTests: XCTestCase {
             viewModel.proxyStatusMessage,
             "Local proxy is already listening on socks5://127.0.0.1:1086"
         )
+    }
+
+    @MainActor
+    func testConnectEnablesSystemProxyWhenRequested() async {
+        let config = ClientConfig(
+            accessKeyID: UUID(uuidString: "4443f193-4a1b-4cf5-9900-554ac3b333ac")!,
+            name: "sergei-spb-key",
+            server: "109.71.246.216",
+            serverPort: 8389,
+            method: "chacha20-ietf-poly1305",
+            password: "secret",
+            tag: "sergei-sergei-spb-key",
+            ssURL: "ss://example"
+        )
+        let runner = MockLocalRunner()
+        let proxyManager = MockSystemProxyManager(
+            enableStatus: SystemSOCKSProxyStatus(
+                serviceName: "Wi-Fi",
+                enabled: true,
+                server: "127.0.0.1",
+                port: 1086
+            )
+        )
+        let emptyBootstrap = ClientBootstrap(userID: UUID(), username: "", configs: [])
+        let viewModel = BootstrapViewModel(
+            apiClient: MockAPIClient(result: .success(emptyBootstrap)),
+            tokenStore: InMemoryTokenStore(),
+            baseURLStore: InMemoryBaseURLStore(),
+            localRunner: runner,
+            proxyProbe: MockLocalProxyProbe(isListening: true),
+            systemProxyManager: proxyManager
+        )
+        viewModel.proxyBinaryPath = "/opt/homebrew/bin/sslocal"
+        viewModel.localSocksPort = "1086"
+        viewModel.autoConfigureSystemProxy = true
+
+        await viewModel.connect(config: config)
+
+        let enabledPort = await proxyManager.enabledPort
+        XCTAssertEqual(enabledPort, 1086)
+        XCTAssertTrue(viewModel.isSystemProxyEnabled)
     }
 }
 
@@ -245,6 +291,7 @@ private final class InMemoryBaseURLStore: APIBaseURLStore, @unchecked Sendable {
     private var baseURL: String?
     private var proxyBinaryPath: String?
     private var localSocksPort: String?
+    private var autoConfigureSystemProxy = true
 
     func readBaseURL() -> String? {
         baseURL
@@ -268,6 +315,14 @@ private final class InMemoryBaseURLStore: APIBaseURLStore, @unchecked Sendable {
 
     func writeLocalSocksPort(_ value: String) {
         localSocksPort = value
+    }
+
+    func readAutoConfigureSystemProxy() -> Bool {
+        autoConfigureSystemProxy
+    }
+
+    func writeAutoConfigureSystemProxy(_ value: Bool) {
+        autoConfigureSystemProxy = value
     }
 }
 
@@ -301,5 +356,50 @@ private struct MockLocalProxyProbe: LocalProxyProbeProtocol {
     func waitUntilListening(on port: Int, timeoutNanoseconds: UInt64) async -> Bool {
         _ = timeoutNanoseconds
         return await isListening(on: port)
+    }
+}
+
+private actor MockSystemProxyManager: SystemProxyManaging {
+    private(set) var enabledPort: Int?
+    private let enableStatus: SystemSOCKSProxyStatus
+    private let disableStatus: SystemSOCKSProxyStatus
+    private let current: SystemSOCKSProxyStatus
+
+    init(
+        current: SystemSOCKSProxyStatus = SystemSOCKSProxyStatus(
+            serviceName: "Wi-Fi",
+            enabled: false,
+            server: nil,
+            port: nil
+        ),
+        enableStatus: SystemSOCKSProxyStatus = SystemSOCKSProxyStatus(
+            serviceName: "Wi-Fi",
+            enabled: false,
+            server: nil,
+            port: nil
+        ),
+        disableStatus: SystemSOCKSProxyStatus = SystemSOCKSProxyStatus(
+            serviceName: "Wi-Fi",
+            enabled: false,
+            server: nil,
+            port: nil
+        )
+    ) {
+        self.current = current
+        self.enableStatus = enableStatus
+        self.disableStatus = disableStatus
+    }
+
+    func currentStatus() async throws -> SystemSOCKSProxyStatus {
+        current
+    }
+
+    func enableLocalSOCKSProxy(port: Int) async throws -> SystemSOCKSProxyStatus {
+        enabledPort = port
+        return enableStatus
+    }
+
+    func disableManagedSOCKSProxy() async throws -> SystemSOCKSProxyStatus {
+        disableStatus
     }
 }

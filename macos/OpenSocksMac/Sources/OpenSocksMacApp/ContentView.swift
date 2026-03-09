@@ -8,6 +8,7 @@ struct ContentView: View {
     @State private var clientTokenDraft: String
     @State private var proxyBinaryPathDraft: String
     @State private var localSocksPortDraft: String
+    @State private var autoConfigureSystemProxyDraft: Bool
 
     init(viewModel: BootstrapViewModel) {
         self.viewModel = viewModel
@@ -15,6 +16,7 @@ struct ContentView: View {
         _clientTokenDraft = State(initialValue: viewModel.clientToken)
         _proxyBinaryPathDraft = State(initialValue: viewModel.proxyBinaryPath)
         _localSocksPortDraft = State(initialValue: viewModel.localSocksPort)
+        _autoConfigureSystemProxyDraft = State(initialValue: viewModel.autoConfigureSystemProxy)
     }
 
     var body: some View {
@@ -23,12 +25,14 @@ struct ContentView: View {
             connectionForm
             statusBlock
             proxyStatusBlock
+            systemProxyStatusBlock
             configsList
         }
         .padding(20)
         .frame(minWidth: 760, minHeight: 560)
         .task {
             await viewModel.refreshLocalProxyState()
+            await viewModel.refreshSystemProxyState()
         }
     }
 
@@ -71,6 +75,8 @@ struct ContentView: View {
                 .frame(width: 140, height: 24)
             }
 
+            Toggle("Enable macOS system SOCKS proxy after connect", isOn: $autoConfigureSystemProxyDraft)
+
             HStack(spacing: 12) {
                 Button("Save Settings") {
                     syncDraftsToViewModel()
@@ -99,6 +105,7 @@ struct ContentView: View {
         viewModel.clientToken = clientTokenDraft
         viewModel.proxyBinaryPath = proxyBinaryPathDraft
         viewModel.localSocksPort = localSocksPortDraft
+        viewModel.autoConfigureSystemProxy = autoConfigureSystemProxyDraft
     }
 
     @ViewBuilder
@@ -138,6 +145,40 @@ struct ContentView: View {
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
                         .lineLimit(6)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    @ViewBuilder
+    private var systemProxyStatusBlock: some View {
+        GroupBox("System Proxy") {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(viewModel.systemProxyStatusMessage)
+                    .font(.headline)
+
+                if let systemProxyErrorMessage = viewModel.systemProxyErrorMessage {
+                    Text(systemProxyErrorMessage)
+                        .foregroundStyle(.red)
+                        .textSelection(.enabled)
+                }
+
+                HStack(spacing: 12) {
+                    Button("Enable System Proxy") {
+                        syncDraftsToViewModel()
+                        Task {
+                            await viewModel.enableSystemProxy()
+                        }
+                    }
+                    .disabled(!viewModel.isLocalProxyListening)
+
+                    Button("Disable System Proxy") {
+                        Task {
+                            await viewModel.disableSystemProxy()
+                        }
+                    }
+                    .disabled(!viewModel.isSystemProxyEnabled)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
