@@ -10,6 +10,10 @@ public protocol ClientTokenStore: Sendable {
 public protocol APIBaseURLStore: Sendable {
     func readBaseURL() -> String?
     func writeBaseURL(_ value: String)
+    func readProxyBinaryPath() -> String?
+    func writeProxyBinaryPath(_ value: String)
+    func readLocalSocksPort() -> String?
+    func writeLocalSocksPort(_ value: String)
 }
 
 public enum TokenStoreError: LocalizedError, Equatable, Sendable {
@@ -105,18 +109,43 @@ public final class KeychainClientTokenStore: ClientTokenStore, @unchecked Sendab
 
 public final class UserDefaultsBaseURLStore: APIBaseURLStore, @unchecked Sendable {
     private let defaults: UserDefaults
-    private let key: String
+    private let baseURLKey: String
+    private let proxyBinaryPathKey: String
+    private let localSocksPortKey: String
 
-    public init(defaults: UserDefaults = .standard, key: String = "opensocks.client.baseURL") {
+    public init(
+        defaults: UserDefaults = .standard,
+        baseURLKey: String = "opensocks.client.baseURL",
+        proxyBinaryPathKey: String = "opensocks.client.proxyBinaryPath",
+        localSocksPortKey: String = "opensocks.client.localSocksPort"
+    ) {
         self.defaults = defaults
-        self.key = key
+        self.baseURLKey = baseURLKey
+        self.proxyBinaryPathKey = proxyBinaryPathKey
+        self.localSocksPortKey = localSocksPortKey
     }
 
     public func readBaseURL() -> String? {
-        defaults.string(forKey: key)
+        defaults.string(forKey: baseURLKey)
     }
 
     public func writeBaseURL(_ value: String) {
-        defaults.set(value, forKey: key)
+        defaults.set(value, forKey: baseURLKey)
+    }
+
+    public func readProxyBinaryPath() -> String? {
+        defaults.string(forKey: proxyBinaryPathKey)
+    }
+
+    public func writeProxyBinaryPath(_ value: String) {
+        defaults.set(value, forKey: proxyBinaryPathKey)
+    }
+
+    public func readLocalSocksPort() -> String? {
+        defaults.string(forKey: localSocksPortKey)
+    }
+
+    public func writeLocalSocksPort(_ value: String) {
+        defaults.set(value, forKey: localSocksPortKey)
     }
 }

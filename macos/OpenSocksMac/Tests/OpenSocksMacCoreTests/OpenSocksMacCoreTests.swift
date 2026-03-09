@@ -41,7 +41,8 @@ final class OpenSocksMacCoreTests: XCTestCase {
         let viewModel = BootstrapViewModel(
             apiClient: MockAPIClient(result: .success(bootstrap)),
             tokenStore: InMemoryTokenStore(),
-            baseURLStore: InMemoryBaseURLStore()
+            baseURLStore: InMemoryBaseURLStore(),
+            localRunner: MockLocalRunner()
         )
         viewModel.baseURLString = "http://127.0.0.1:18000"
         viewModel.clientToken = "client-token"
@@ -59,7 +60,8 @@ final class OpenSocksMacCoreTests: XCTestCase {
         let viewModel = BootstrapViewModel(
             apiClient: MockAPIClient(result: .failure(OpenSocksClientError.unauthorized)),
             tokenStore: InMemoryTokenStore(),
-            baseURLStore: InMemoryBaseURLStore()
+            baseURLStore: InMemoryBaseURLStore(),
+            localRunner: MockLocalRunner()
         )
         viewModel.baseURLString = "http://127.0.0.1:18000"
         viewModel.clientToken = "bad-token"
@@ -68,6 +70,77 @@ final class OpenSocksMacCoreTests: XCTestCase {
 
         XCTAssertEqual(viewModel.configs, [])
         XCTAssertEqual(viewModel.errorMessage, "Client token was rejected by the API")
+    }
+
+    @MainActor
+    func testConnectUsesSelectedConfig() {
+        let config = ClientConfig(
+            accessKeyID: UUID(uuidString: "4443f193-4a1b-4cf5-9900-554ac3b333ac")!,
+            name: "sergei-spb-key",
+            server: "109.71.246.216",
+            serverPort: 8389,
+            method: "chacha20-ietf-poly1305",
+            password: "secret",
+            tag: "sergei-sergei-spb-key",
+            ssURL: "ss://example"
+        )
+        let runner = MockLocalRunner()
+        let emptyBootstrap = ClientBootstrap(
+            userID: UUID(),
+            username: "",
+            configs: []
+        )
+        let viewModel = BootstrapViewModel(
+            apiClient: MockAPIClient(result: .success(emptyBootstrap)),
+            tokenStore: InMemoryTokenStore(),
+            baseURLStore: InMemoryBaseURLStore(),
+            localRunner: runner
+        )
+        viewModel.proxyBinaryPath = "/opt/homebrew/bin/sslocal"
+        viewModel.localSocksPort = "1086"
+
+        viewModel.connect(config: config)
+
+        XCTAssertEqual(runner.startedConfigID, config.id)
+        XCTAssertEqual(viewModel.activeAccessKeyID, config.id)
+        XCTAssertEqual(
+            viewModel.proxyStatusMessage,
+            "Connected via sergei-spb-key on socks5://127.0.0.1:1086"
+        )
+    }
+
+    @MainActor
+    func testConnectRejectsInvalidPort() {
+        let config = ClientConfig(
+            accessKeyID: UUID(uuidString: "4443f193-4a1b-4cf5-9900-554ac3b333ac")!,
+            name: "sergei-spb-key",
+            server: "109.71.246.216",
+            serverPort: 8389,
+            method: "chacha20-ietf-poly1305",
+            password: "secret",
+            tag: "sergei-sergei-spb-key",
+            ssURL: "ss://example"
+        )
+        let emptyBootstrap = ClientBootstrap(
+            userID: UUID(),
+            username: "",
+            configs: []
+        )
+        let viewModel = BootstrapViewModel(
+            apiClient: MockAPIClient(result: .success(emptyBootstrap)),
+            tokenStore: InMemoryTokenStore(),
+            baseURLStore: InMemoryBaseURLStore(),
+            localRunner: MockLocalRunner()
+        )
+        viewModel.localSocksPort = "abc"
+
+        viewModel.connect(config: config)
+
+        XCTAssertNil(viewModel.activeAccessKeyID)
+        XCTAssertEqual(
+            viewModel.proxyErrorMessage,
+            "Local SOCKS5 port must be a valid port number"
+        )
     }
 }
 
@@ -99,6 +172,8 @@ private final class InMemoryTokenStore: ClientTokenStore, @unchecked Sendable {
 
 private final class InMemoryBaseURLStore: APIBaseURLStore, @unchecked Sendable {
     private var baseURL: String?
+    private var proxyBinaryPath: String?
+    private var localSocksPort: String?
 
     func readBaseURL() -> String? {
         baseURL
@@ -106,5 +181,40 @@ private final class InMemoryBaseURLStore: APIBaseURLStore, @unchecked Sendable {
 
     func writeBaseURL(_ value: String) {
         baseURL = value
+    }
+
+    func readProxyBinaryPath() -> String? {
+        proxyBinaryPath
+    }
+
+    func writeProxyBinaryPath(_ value: String) {
+        proxyBinaryPath = value
+    }
+
+    func readLocalSocksPort() -> String? {
+        localSocksPort
+    }
+
+    func writeLocalSocksPort(_ value: String) {
+        localSocksPort = value
+    }
+}
+
+@MainActor
+private final class MockLocalRunner: ShadowsocksLocalRunnerProtocol {
+    var activeAccessKeyID: UUID?
+    var latestLogOutput = ""
+    var onTermination: ((Int32) -> Void)?
+    var startedConfigID: UUID?
+
+    func start(config: ClientConfig, binaryPath: String, localSocksPort: Int) throws {
+        _ = binaryPath
+        _ = localSocksPort
+        activeAccessKeyID = config.id
+        startedConfigID = config.id
+    }
+
+    func stop() {
+        activeAccessKeyID = nil
     }
 }

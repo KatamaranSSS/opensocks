@@ -6,11 +6,15 @@ struct ContentView: View {
     @ObservedObject var viewModel: BootstrapViewModel
     @State private var baseURLDraft: String
     @State private var clientTokenDraft: String
+    @State private var proxyBinaryPathDraft: String
+    @State private var localSocksPortDraft: String
 
     init(viewModel: BootstrapViewModel) {
         self.viewModel = viewModel
         _baseURLDraft = State(initialValue: viewModel.baseURLString)
         _clientTokenDraft = State(initialValue: viewModel.clientToken)
+        _proxyBinaryPathDraft = State(initialValue: viewModel.proxyBinaryPath)
+        _localSocksPortDraft = State(initialValue: viewModel.localSocksPort)
     }
 
     var body: some View {
@@ -18,6 +22,7 @@ struct ContentView: View {
             header
             connectionForm
             statusBlock
+            proxyStatusBlock
             configsList
         }
         .padding(20)
@@ -50,6 +55,20 @@ struct ContentView: View {
             .frame(height: 24)
 
             HStack(spacing: 12) {
+                AppKitTextField(
+                    placeholder: "sslocal binary path",
+                    text: $proxyBinaryPathDraft
+                )
+                .frame(height: 24)
+
+                AppKitTextField(
+                    placeholder: "Local SOCKS5 port",
+                    text: $localSocksPortDraft
+                )
+                .frame(width: 140, height: 24)
+            }
+
+            HStack(spacing: 12) {
                 Button("Save Settings") {
                     syncDraftsToViewModel()
                     viewModel.persistSettings()
@@ -75,6 +94,8 @@ struct ContentView: View {
     private func syncDraftsToViewModel() {
         viewModel.baseURLString = baseURLDraft
         viewModel.clientToken = clientTokenDraft
+        viewModel.proxyBinaryPath = proxyBinaryPathDraft
+        viewModel.localSocksPort = localSocksPortDraft
     }
 
     @ViewBuilder
@@ -92,6 +113,31 @@ struct ContentView: View {
                         .font(.headline)
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var proxyStatusBlock: some View {
+        GroupBox("Local Proxy") {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(viewModel.proxyStatusMessage)
+                    .font(.headline)
+
+                if let proxyErrorMessage = viewModel.proxyErrorMessage {
+                    Text(proxyErrorMessage)
+                        .foregroundStyle(.red)
+                        .textSelection(.enabled)
+                }
+
+                if !viewModel.proxyLogOutput.isEmpty {
+                    Text(viewModel.proxyLogOutput)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .lineLimit(6)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -127,6 +173,17 @@ struct ContentView: View {
                             .foregroundStyle(.secondary)
 
                         HStack {
+                            if viewModel.isActive(config: config) {
+                                Button("Disconnect") {
+                                    viewModel.disconnect()
+                                }
+                            } else {
+                                Button("Connect") {
+                                    syncDraftsToViewModel()
+                                    viewModel.connect(config: config)
+                                }
+                            }
+
                             Button("Copy SS URL") {
                                 NSPasteboard.general.clearContents()
                                 NSPasteboard.general.setString(config.ssURL, forType: .string)

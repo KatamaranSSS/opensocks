@@ -21,7 +21,8 @@ struct OpenSocksMacApp: App {
             service: "com.opensocks.macos",
             account: "client-token"
         ),
-        baseURLStore: UserDefaultsBaseURLStore()
+        baseURLStore: UserDefaultsBaseURLStore(),
+        localRunner: ShadowsocksLocalRunner()
     )
 
     var body: some Scene {
