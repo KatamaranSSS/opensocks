@@ -12,10 +12,11 @@ Workspace for building a self-hosted Shadowsocks service and a client applicatio
 
 - `PLAN.md` - main work plan and progress tracker
 - `infra/` - server and deployment preparation
+- `backend/` - FastAPI control plane
+- `macos/OpenSocksMac/` - first native macOS client on SwiftUI + SwiftPM
 
 ## Next immediate steps
 
 1. Finalize technical decisions
 2. Fill in server access and deployment details
-3. Scaffold the application and server components
-
+3. Finish the first macOS client loop and connect it to the live API
