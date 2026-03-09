@@ -61,14 +61,10 @@ public final class ShadowsocksLocalRunner: ShadowsocksLocalRunnerProtocol {
 
         let process = Process()
         let pipe = Pipe()
-        let commandArguments = [
-            "-b", "127.0.0.1",
-            "-l", "\(localSocksPort)",
-            "-s", config.server,
-            "-p", "\(config.serverPort)",
-            "-k", config.password,
-            "-m", config.method,
-        ]
+        let commandArguments = Self.makeCommandArguments(
+            config: config,
+            localSocksPort: localSocksPort
+        )
 
         if trimmedBinaryPath.contains("/") {
             guard fileManager.isExecutableFile(atPath: trimmedBinaryPath) else {
@@ -111,6 +107,18 @@ public final class ShadowsocksLocalRunner: ShadowsocksLocalRunnerProtocol {
         self.process = process
         self.outputPipe = pipe
         self.activeAccessKeyID = config.id
+    }
+
+    public static func makeCommandArguments(
+        config: ClientConfig,
+        localSocksPort: Int
+    ) -> [String] {
+        [
+            "-b", "127.0.0.1:\(localSocksPort)",
+            "-s", "\(config.server):\(config.serverPort)",
+            "-k", config.password,
+            "-m", config.method,
+        ]
     }
 
     public func stop() {

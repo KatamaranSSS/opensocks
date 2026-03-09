@@ -2,6 +2,34 @@ import XCTest
 @testable import OpenSocksMacCore
 
 final class OpenSocksMacCoreTests: XCTestCase {
+    func testShadowsocksRunnerBuildsCurrentCliArguments() {
+        let config = ClientConfig(
+            accessKeyID: UUID(uuidString: "4443f193-4a1b-4cf5-9900-554ac3b333ac")!,
+            name: "sergei-spb-key",
+            server: "109.71.246.216",
+            serverPort: 8389,
+            method: "chacha20-ietf-poly1305",
+            password: "secret",
+            tag: "sergei-sergei-spb-key",
+            ssURL: "ss://example"
+        )
+
+        let arguments = ShadowsocksLocalRunner.makeCommandArguments(
+            config: config,
+            localSocksPort: 1086
+        )
+
+        XCTAssertEqual(
+            arguments,
+            [
+                "-b", "127.0.0.1:1086",
+                "-s", "109.71.246.216:8389",
+                "-k", "secret",
+                "-m", "chacha20-ietf-poly1305",
+            ]
+        )
+    }
+
     func testMakeBootstrapRequestUsesExpectedPathAndToken() throws {
         let baseURL = try XCTUnwrap(URL(string: "http://127.0.0.1:18000"))
 
