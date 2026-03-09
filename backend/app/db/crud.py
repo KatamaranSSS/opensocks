@@ -1,10 +1,14 @@
+from base64 import urlsafe_b64encode
+from secrets import token_hex
+from urllib.parse import quote
 from uuid import UUID
 
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.db.models import Node, User
+from app.db.models import AccessKey, Node, User
+from app.schemas.access_key import AccessKeyConfigRead, AccessKeyCreate
 from app.schemas.node import NodeCreate
 from app.schemas.user import UserCreate
 
@@ -18,13 +22,21 @@ def get_user(session: Session, user_id: UUID) -> User | None:
 
 
 def create_user(session: Session, payload: UserCreate) -> User:
+    duplicate_username = session.scalar(select(User).where(User.username == payload.username))
+    if duplicate_username is not None:
+        raise ValueError("Username already exists")
+
     user = User(
         username=payload.username,
         email=payload.email,
         is_active=payload.is_active,
     )
     session.add(user)
-    session.commit()
+    try:
+        session.commit()
+    except IntegrityError as error:
+        session.rollback()
+        raise ValueError("User violates uniqueness constraints") from error
     session.refresh(user)
     return user
 
@@ -63,3 +75,83 @@ def create_node(session: Session, payload: NodeCreate) -> Node:
         raise ValueError("Node violates uniqueness constraints") from error
     session.refresh(node)
     return node
+
+
+def list_access_keys(session: Session) -> list[AccessKey]:
+    return list(session.scalars(select(AccessKey).order_by(AccessKey.created_at.desc())))
+
+
+def get_access_key(session: Session, access_key_id: UUID) -> AccessKey | None:
+    return session.get(AccessKey, str(access_key_id))
+
+
+def create_access_key(session: Session, payload: AccessKeyCreate) -> AccessKey:
+    duplicate_name = session.scalar(select(AccessKey).where(AccessKey.name == payload.name))
+    if duplicate_name is not None:
+        raise ValueError("Access key name already exists")
+
+    user = session.get(User, str(payload.user_id))
+    if user is None:
+        raise LookupError("User not found")
+
+    node = session.get(Node, str(payload.node_id))
+    if node is None:
+        raise LookupError("Node not found")
+
+    access_key = AccessKey(
+        name=payload.name,
+        user_id=str(payload.user_id),
+        node_id=str(payload.node_id),
+        cipher=payload.cipher,
+        secret=payload.secret or token_hex(16),
+        is_active=payload.is_active,
+    )
+    session.add(access_key)
+    try:
+        session.commit()
+    except IntegrityError as error:
+        session.rollback()
+        raise ValueError("Access key violates uniqueness constraints") from error
+    session.refresh(access_key)
+    return access_key
+
+
+def deactivate_access_key(session: Session, access_key_id: UUID) -> AccessKey | None:
+    access_key = get_access_key(session, access_key_id)
+    if access_key is None:
+        return None
+
+    access_key.is_active = False
+    session.commit()
+    session.refresh(access_key)
+    return access_key
+
+
+def build_access_key_config(session: Session, access_key_id: UUID) -> AccessKeyConfigRead:
+    access_key = get_access_key(session, access_key_id)
+    if access_key is None:
+        raise LookupError("Access key not found")
+
+    node = session.get(Node, access_key.node_id)
+    if node is None:
+        raise LookupError("Node not found")
+
+    user = session.get(User, access_key.user_id)
+    if user is None:
+        raise LookupError("User not found")
+
+    user_info = f"{access_key.cipher}:{access_key.secret}".encode("utf-8")
+    encoded_credential = urlsafe_b64encode(user_info).decode("utf-8").rstrip("=")
+    tag = f"{user.username}-{access_key.name}"
+    ss_url = f"ss://{encoded_credential}@{node.host}:{node.port}#{quote(tag)}"
+
+    return AccessKeyConfigRead(
+        access_key_id=UUID(access_key.id),
+        name=access_key.name,
+        server=node.host,
+        server_port=node.port,
+        method=access_key.cipher,
+        password=access_key.secret,
+        tag=tag,
+        ss_url=ss_url,
+    )

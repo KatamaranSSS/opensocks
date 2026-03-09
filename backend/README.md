@@ -19,6 +19,11 @@ FastAPI-based control plane for the OpenSocks project.
 - `GET /api/v1/nodes`
 - `POST /api/v1/nodes`
 - `GET /api/v1/nodes/{node_id}`
+- `GET /api/v1/access-keys`
+- `POST /api/v1/access-keys`
+- `GET /api/v1/access-keys/{access_key_id}`
+- `POST /api/v1/access-keys/{access_key_id}/deactivate`
+- `GET /api/v1/access-keys/{access_key_id}/config`
 
 All `users` and `nodes` endpoints require:
 
