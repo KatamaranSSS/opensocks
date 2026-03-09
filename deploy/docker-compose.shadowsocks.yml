@@ -1,0 +1,14 @@
+services:
+  ssserver:
+    image: ${SSSERVER_IMAGE:-ghcr.io/shadowsocks/ssserver-rust:latest}
+    container_name: opensocks-ssserver
+    restart: unless-stopped
+    command:
+      - "-s"
+      - "0.0.0.0:${SSSERVER_PORT}"
+      - "-k"
+      - "${SSSERVER_PASSWORD}"
+      - "-m"
+      - "${SSSERVER_METHOD}"
+    ports:
+      - "${SSSERVER_PORT}:${SSSERVER_PORT}/tcp"

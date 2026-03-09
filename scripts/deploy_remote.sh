@@ -20,8 +20,35 @@ if [[ -f "opensocks-api.tar" ]]; then
   rm -f opensocks-api.tar
 fi
 
-docker compose --env-file deploy/.env.server -f deploy/docker-compose.server.yml up -d
-docker compose --env-file deploy/.env.server -f deploy/docker-compose.server.yml ps
+source deploy/.env.server
+
+compose_args=(
+  --env-file deploy/.env.server
+  -f deploy/docker-compose.server.yml
+)
+
+if [[ "${SSSERVER_ENABLED:-false}" == "true" ]]; then
+  compose_args+=(-f deploy/docker-compose.shadowsocks.yml)
+fi
+
+docker compose "${compose_args[@]}" up -d
+docker compose "${compose_args[@]}" ps
+
+if [[ "${SSSERVER_ENABLED:-false}" == "true" ]]; then
+  for attempt in {1..20}; do
+    if [[ "$(docker inspect -f '{{.State.Running}}' opensocks-ssserver 2>/dev/null || true)" == "true" ]]; then
+      echo "Shadowsocks server is running on tcp/${SSSERVER_PORT}"
+      break
+    fi
+    sleep 2
+  done
+
+  if [[ "$(docker inspect -f '{{.State.Running}}' opensocks-ssserver 2>/dev/null || true)" != "true" ]]; then
+    echo "Shadowsocks server failed to start."
+    docker compose "${compose_args[@]}" logs ssserver
+    exit 1
+  fi
+fi
 
 for attempt in {1..20}; do
   if curl --fail --silent http://127.0.0.1:18000/api/v1/health >/dev/null; then

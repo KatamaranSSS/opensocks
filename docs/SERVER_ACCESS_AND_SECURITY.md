@@ -83,6 +83,6 @@ For now OpenSocks should use:
 
 - API bind: `127.0.0.1:18000`
 - PostgreSQL: internal Docker network only
+- Shadowsocks test port: `8389/tcp` until a second server is introduced
 
 This avoids conflicts with the existing VPN services and keeps the new API off the public internet until a proper reverse proxy or separate host is introduced.
-

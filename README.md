@@ -14,6 +14,7 @@ Workspace for building a self-hosted Shadowsocks service and a client applicatio
 - `infra/` - server and deployment preparation
 - `backend/` - FastAPI control plane
 - `macos/OpenSocksMac/` - first native macOS client on SwiftUI + SwiftPM
+- `deploy/` - server compose files for API and Shadowsocks runtime
 
 ## Next immediate steps
 

@@ -88,6 +88,7 @@ Do not assume protected deployment environments are available for the first vers
 - Docker Compose plugin
 - OpenSSH server
 - firewall rules
+- public access to the selected Shadowsocks ports
 
 ## Open decisions
 
