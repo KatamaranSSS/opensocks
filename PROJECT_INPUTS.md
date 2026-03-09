@@ -43,18 +43,17 @@ Recommended model: `GitHub Actions -> tests -> Docker image build -> registry pu
 ## Product
 
 - First client platforms: `macOS`
-- Control panel required: yes / no
 - Control panel required: `yes`
-- Multi-user support required:
+- Multi-user support required: `yes`
 - Need billing: yes / no
 - Need traffic quotas: yes / no
 
 ## Tech decisions
 
-- Backend stack: `Python` proposed by user, final recommendation pending
-- Client stack: open question
+- Backend stack: `Python + FastAPI`
+- Client stack: `native macOS app on SwiftUI`
 - Database:
-- Proxy implementation: recommended `shadowsocks-rust`
+- Proxy implementation: `shadowsocks-rust`
 
 ## Current interpretation of open questions
 
@@ -64,13 +63,12 @@ Recommended model: `GitHub Actions -> tests -> Docker image build -> registry pu
 - Future topology: `prod + failover`
 - Domains are not purchased yet
 - Server provider is not selected yet
-- `Multi-user support` means whether the system should manage multiple separate end users, each with their own access, configs, limits and activity history
-- `Client stack` means whether we build:
-  - one cross-platform app with shared UI
-  - a native macOS app first and separate native apps later
+- Repository visibility: `private`
+- GitHub plan: `Free`, without `GitHub Pro`
+- First audience geography: `RU`
 
 ## Notes
 
 - Need to choose provider, regions and minimum instance size before infra work starts
-- Need to choose client architecture before app scaffold starts
-- Need to confirm whether billing/quotas are in MVP
+- Billing and traffic quotas are still not confirmed for MVP
+- GitHub environments for private repositories are not available on GitHub Free, so deployment will rely on repository secrets instead of environment secrets

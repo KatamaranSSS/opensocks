@@ -51,6 +51,17 @@ Self-hosted runners add maintenance and security overhead on the same hosts that
 - `TEST_SERVER_2_USER`
 - registry token if needed
 
+## Private repository note
+
+This repository is private and the current GitHub account does not use `GitHub Pro`.
+
+Because of that, the first implementation should rely on:
+
+- repository-level `Actions Secrets`
+- repository-level workflows
+
+Do not assume protected deployment environments are available for the first version.
+
 ## Required server-side software
 
 - Docker Engine
@@ -63,4 +74,3 @@ Self-hosted runners add maintenance and security overhead on the same hosts that
 - exact registry namespace
 - whether test servers deploy on every push or only on `main`
 - smoke check endpoints and health criteria
-

@@ -29,22 +29,30 @@ For later production:
 - `60+ GB SSD`
 - snapshots/backups enabled
 
-## Recommended providers to compare
+## Recommended providers for your current constraints
 
-- `Hetzner Cloud`: usually best price/performance if the needed region fits
-- `DigitalOcean`: simpler UX and many guides, usually more expensive
-- `Vultr`: broad region coverage and straightforward VPS model
+Because the first audience is in Russia and billing in rubles is required, start with Russian-friendly providers first:
+
+- `Timeweb Cloud`
+- `Selectel`
+- `RuVDS`
+- `VDSina`
+
+Practical default:
+
+- `Timeweb Cloud` or `Selectel` for the first main server
+- `RuVDS` or `VDSina` as cheaper test-node alternatives if needed
 
 ## Region strategy
 
 Pick regions based on where the users are physically located.
 
-Starting recommendation:
+Starting recommendation for the current phase:
 
-- one European region
-- one US region
+- `Moscow`
+- `Saint Petersburg`
 
-If your first users are mostly in Russia/CIS, nearby European locations are usually the first place to test. Do not commit to one geography before checking latency and legal risk for your target audience.
+When the product expands beyond RU-only usage, revisit the topology and add foreign regions.
 
 ## What to verify before buying
 
@@ -66,4 +74,3 @@ Optional later:
 
 - landing site domain
 - separate status domain
-
