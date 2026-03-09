@@ -134,6 +134,7 @@ final class OpenSocksMacCoreTests: XCTestCase {
 
         XCTAssertEqual(runner.startedConfigID, config.id)
         XCTAssertEqual(viewModel.activeAccessKeyID, config.id)
+        XCTAssertTrue(viewModel.isLocalProxyListening)
         XCTAssertEqual(
             viewModel.proxyStatusMessage,
             "Connected via sergei-spb-key on socks5://127.0.0.1:1086"
@@ -172,6 +173,44 @@ final class OpenSocksMacCoreTests: XCTestCase {
         XCTAssertEqual(
             viewModel.proxyErrorMessage,
             "Local SOCKS5 port must be a valid port number"
+        )
+    }
+
+    @MainActor
+    func testConnectRejectsAlreadyListeningPort() async {
+        let config = ClientConfig(
+            accessKeyID: UUID(uuidString: "4443f193-4a1b-4cf5-9900-554ac3b333ac")!,
+            name: "sergei-spb-key",
+            server: "109.71.246.216",
+            serverPort: 8389,
+            method: "chacha20-ietf-poly1305",
+            password: "secret",
+            tag: "sergei-sergei-spb-key",
+            ssURL: "ss://example"
+        )
+        let runner = MockLocalRunner()
+        let emptyBootstrap = ClientBootstrap(
+            userID: UUID(),
+            username: "",
+            configs: []
+        )
+        let viewModel = BootstrapViewModel(
+            apiClient: MockAPIClient(result: .success(emptyBootstrap)),
+            tokenStore: InMemoryTokenStore(),
+            baseURLStore: InMemoryBaseURLStore(),
+            localRunner: runner,
+            proxyProbe: MockLocalProxyProbe(isListening: true)
+        )
+        viewModel.localSocksPort = "1086"
+
+        await viewModel.connect(config: config)
+
+        XCTAssertNil(runner.startedConfigID)
+        XCTAssertNil(viewModel.activeAccessKeyID)
+        XCTAssertTrue(viewModel.isLocalProxyListening)
+        XCTAssertEqual(
+            viewModel.proxyStatusMessage,
+            "Local proxy is already listening on socks5://127.0.0.1:1086"
         )
     }
 }

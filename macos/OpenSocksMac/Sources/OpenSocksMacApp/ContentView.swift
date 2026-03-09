@@ -182,6 +182,9 @@ struct ContentView: View {
                                         await viewModel.disconnect()
                                     }
                                 }
+                            } else if !viewModel.canConnect(config: config) {
+                                Button("Port Busy") {}
+                                    .disabled(true)
                             } else {
                                 Button("Connect") {
                                     syncDraftsToViewModel()

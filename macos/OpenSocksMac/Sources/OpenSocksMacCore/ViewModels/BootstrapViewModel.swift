@@ -15,6 +15,7 @@ public final class BootstrapViewModel: ObservableObject {
     @Published public private(set) var proxyStatusMessage: String = "Disconnected"
     @Published public private(set) var proxyErrorMessage: String?
     @Published public private(set) var activeAccessKeyID: UUID?
+    @Published public private(set) var isLocalProxyListening = false
     @Published public private(set) var proxyLogOutput: String = ""
 
     private let apiClient: OpenSocksAPIClientProtocol
@@ -126,6 +127,22 @@ public final class BootstrapViewModel: ObservableObject {
         do {
             persistSettings()
             let socksPort = try resolvedLocalSocksPort()
+            let isAlreadyListening = await proxyProbe.isListening(on: socksPort)
+            if isAlreadyListening {
+                isLocalProxyListening = true
+                if activeAccessKeyID == config.id {
+                    proxyStatusMessage = "Connected via \(config.name) on socks5://127.0.0.1:\(socksPort)"
+                    proxyErrorMessage = nil
+                } else {
+                    proxyStatusMessage = "Local proxy is already listening on socks5://127.0.0.1:\(socksPort)"
+                    proxyErrorMessage = """
+                    Port \(socksPort) is already in use by another local proxy process. \
+                    Stop that process or choose a different local SOCKS5 port.
+                    """
+                }
+                return
+            }
+
             try localRunner.start(
                 config: config,
                 binaryPath: proxyBinaryPath,
@@ -133,15 +150,18 @@ public final class BootstrapViewModel: ObservableObject {
             )
             proxyLogOutput = localRunner.latestLogOutput
             if await proxyProbe.waitUntilListening(on: socksPort) {
+                isLocalProxyListening = true
                 activeAccessKeyID = config.id
                 proxyStatusMessage = "Connected via \(config.name) on socks5://127.0.0.1:\(socksPort)"
                 proxyErrorMessage = nil
             } else {
+                isLocalProxyListening = false
                 activeAccessKeyID = nil
                 proxyStatusMessage = "Disconnected"
                 proxyErrorMessage = "sslocal did not open local port \(socksPort)"
             }
         } catch {
+            isLocalProxyListening = false
             activeAccessKeyID = nil
             proxyStatusMessage = "Disconnected"
             proxyErrorMessage = resolvedErrorMessage(for: error)
@@ -162,11 +182,13 @@ public final class BootstrapViewModel: ObservableObject {
 
     public func refreshLocalProxyState() async {
         guard let port = Int(localSocksPort) else {
+            isLocalProxyListening = false
             proxyStatusMessage = "Disconnected"
             return
         }
 
         let isListening = await proxyProbe.isListening(on: port)
+        isLocalProxyListening = isListening
         if isListening {
             if activeAccessKeyID == nil {
                 proxyStatusMessage = "Local proxy is listening on socks5://127.0.0.1:\(port)"
@@ -176,6 +198,10 @@ public final class BootstrapViewModel: ObservableObject {
             activeAccessKeyID = nil
             proxyStatusMessage = "Disconnected"
         }
+    }
+
+    public func canConnect(config: ClientConfig) -> Bool {
+        !isLocalProxyListening || isActive(config: config)
     }
 
     private func resolvedBaseURL() throws -> URL {
