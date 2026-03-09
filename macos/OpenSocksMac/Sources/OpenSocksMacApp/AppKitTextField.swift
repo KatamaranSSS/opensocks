@@ -1,6 +1,18 @@
 import AppKit
 import SwiftUI
 
+final class FocusableTextField: NSTextField {
+    override var acceptsFirstResponder: Bool {
+        true
+    }
+}
+
+final class FocusableSecureTextField: NSSecureTextField {
+    override var acceptsFirstResponder: Bool {
+        true
+    }
+}
+
 struct AppKitTextField: NSViewRepresentable {
     let placeholder: String
     @Binding var text: String
@@ -11,12 +23,15 @@ struct AppKitTextField: NSViewRepresentable {
     }
 
     func makeNSView(context: Context) -> NSTextField {
-        let field = isSecure ? NSSecureTextField() : NSTextField()
+        let field = isSecure ? FocusableSecureTextField() : FocusableTextField()
         field.placeholderString = placeholder
         field.font = .monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
         field.bezelStyle = .roundedBezel
         field.isBordered = true
         field.isBezeled = true
+        field.isEditable = true
+        field.isSelectable = true
+        field.isEnabled = true
         field.focusRingType = .default
         field.delegate = context.coordinator
         return field
