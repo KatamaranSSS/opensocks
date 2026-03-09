@@ -1,6 +1,6 @@
 import Foundation
 
-public struct ClientBootstrap: Codable, Equatable {
+public struct ClientBootstrap: Codable, Equatable, Sendable {
     public let userID: UUID
     public let username: String
     public let configs: [ClientConfig]
@@ -18,7 +18,7 @@ public struct ClientBootstrap: Codable, Equatable {
     }
 }
 
-public struct ClientConfig: Codable, Equatable, Identifiable {
+public struct ClientConfig: Codable, Equatable, Identifiable, Sendable {
     public let accessKeyID: UUID
     public let name: String
     public let server: String
