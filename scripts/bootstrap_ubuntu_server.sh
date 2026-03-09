@@ -11,7 +11,7 @@ fi
 export DEBIAN_FRONTEND=noninteractive
 
 apt-get update
-apt-get install -y ca-certificates curl git ufw fail2ban
+apt-get install -y ca-certificates curl git rsync ufw fail2ban
 
 install -m 0755 -d /etc/apt/keyrings
 if [[ ! -f /etc/apt/keyrings/docker.asc ]]; then
@@ -43,4 +43,3 @@ echo "Next steps:"
 echo "1. Copy project files to ${DEPLOY_PATH}"
 echo "2. Create ${DEPLOY_PATH}/deploy/.env.server"
 echo "3. Run docker compose -f deploy/docker-compose.server.yml up --build -d from ${DEPLOY_PATH}"
-
