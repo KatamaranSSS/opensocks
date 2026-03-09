@@ -13,6 +13,7 @@
   - [x] other
 
 Recommended model: `GitHub Actions -> tests -> Docker image build -> registry push -> SSH deploy to Docker hosts`
+Initial practical model for current GitHub plan: `GitHub Actions -> tests -> SSH -> docker compose pull/build/up on servers`
 
 ## Servers
 
