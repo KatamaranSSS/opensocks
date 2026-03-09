@@ -21,17 +21,20 @@ public final class BootstrapViewModel: ObservableObject {
     private let tokenStore: ClientTokenStore
     private let settingsStore: APIBaseURLStore
     private let localRunner: ShadowsocksLocalRunnerProtocol
+    private let proxyProbe: LocalProxyProbeProtocol
 
     public init(
         apiClient: OpenSocksAPIClientProtocol,
         tokenStore: ClientTokenStore,
         baseURLStore: APIBaseURLStore,
-        localRunner: ShadowsocksLocalRunnerProtocol
+        localRunner: ShadowsocksLocalRunnerProtocol,
+        proxyProbe: LocalProxyProbeProtocol
     ) {
         self.apiClient = apiClient
         self.tokenStore = tokenStore
         self.settingsStore = baseURLStore
         self.localRunner = localRunner
+        self.proxyProbe = proxyProbe
         let storedBaseURL = baseURLStore.readBaseURL()
         self.baseURLString = Self.resolvedInitialBaseURL(storedBaseURL)
         self.clientToken = (try? tokenStore.readToken()) ?? ""
@@ -49,16 +52,23 @@ public final class BootstrapViewModel: ObservableObject {
             if status == 0 {
                 self.proxyStatusMessage = "Disconnected"
                 self.proxyErrorMessage = nil
-                return
+            } else {
+                self.proxyStatusMessage = "Disconnected"
+                let logOutput = self.localRunner.latestLogOutput.trimmingCharacters(
+                    in: .whitespacesAndNewlines
+                )
+                self.proxyErrorMessage = logOutput.isEmpty
+                    ? "sslocal exited with status \(status)"
+                    : logOutput
             }
 
-            self.proxyStatusMessage = "Disconnected"
-            let logOutput = self.localRunner.latestLogOutput.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            )
-            self.proxyErrorMessage = logOutput.isEmpty
-                ? "sslocal exited with status \(status)"
-                : logOutput
+            Task { [weak self] in
+                await self?.refreshLocalProxyState()
+            }
+        }
+
+        Task { [weak self] in
+            await self?.refreshLocalProxyState()
         }
     }
 
@@ -110,7 +120,7 @@ public final class BootstrapViewModel: ObservableObject {
         isLoading = false
     }
 
-    public func connect(config: ClientConfig) {
+    public func connect(config: ClientConfig) async {
         proxyErrorMessage = nil
 
         do {
@@ -121,9 +131,16 @@ public final class BootstrapViewModel: ObservableObject {
                 binaryPath: proxyBinaryPath,
                 localSocksPort: socksPort
             )
-            activeAccessKeyID = config.id
             proxyLogOutput = localRunner.latestLogOutput
-            proxyStatusMessage = "Connected via \(config.name) on socks5://127.0.0.1:\(socksPort)"
+            if await proxyProbe.waitUntilListening(on: socksPort) {
+                activeAccessKeyID = config.id
+                proxyStatusMessage = "Connected via \(config.name) on socks5://127.0.0.1:\(socksPort)"
+                proxyErrorMessage = nil
+            } else {
+                activeAccessKeyID = nil
+                proxyStatusMessage = "Disconnected"
+                proxyErrorMessage = "sslocal did not open local port \(socksPort)"
+            }
         } catch {
             activeAccessKeyID = nil
             proxyStatusMessage = "Disconnected"
@@ -131,16 +148,34 @@ public final class BootstrapViewModel: ObservableObject {
         }
     }
 
-    public func disconnect() {
+    public func disconnect() async {
         localRunner.stop()
         activeAccessKeyID = nil
         proxyLogOutput = localRunner.latestLogOutput
-        proxyStatusMessage = "Disconnected"
         proxyErrorMessage = nil
+        await refreshLocalProxyState()
     }
 
     public func isActive(config: ClientConfig) -> Bool {
         activeAccessKeyID == config.id
+    }
+
+    public func refreshLocalProxyState() async {
+        guard let port = Int(localSocksPort) else {
+            proxyStatusMessage = "Disconnected"
+            return
+        }
+
+        let isListening = await proxyProbe.isListening(on: port)
+        if isListening {
+            if activeAccessKeyID == nil {
+                proxyStatusMessage = "Local proxy is listening on socks5://127.0.0.1:\(port)"
+            }
+            proxyErrorMessage = nil
+        } else {
+            activeAccessKeyID = nil
+            proxyStatusMessage = "Disconnected"
+        }
     }
 
     private func resolvedBaseURL() throws -> URL {

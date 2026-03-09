@@ -22,7 +22,8 @@ struct OpenSocksMacApp: App {
             account: "client-token"
         ),
         baseURLStore: UserDefaultsBaseURLStore(),
-        localRunner: ShadowsocksLocalRunner()
+        localRunner: ShadowsocksLocalRunner(),
+        proxyProbe: LocalProxyProbe()
     )
 
     var body: some Scene {

@@ -70,7 +70,8 @@ final class OpenSocksMacCoreTests: XCTestCase {
             apiClient: MockAPIClient(result: .success(bootstrap)),
             tokenStore: InMemoryTokenStore(),
             baseURLStore: InMemoryBaseURLStore(),
-            localRunner: MockLocalRunner()
+            localRunner: MockLocalRunner(),
+            proxyProbe: MockLocalProxyProbe(isListening: true)
         )
         viewModel.baseURLString = "http://127.0.0.1:18000"
         viewModel.clientToken = "client-token"
@@ -89,7 +90,8 @@ final class OpenSocksMacCoreTests: XCTestCase {
             apiClient: MockAPIClient(result: .failure(OpenSocksClientError.unauthorized)),
             tokenStore: InMemoryTokenStore(),
             baseURLStore: InMemoryBaseURLStore(),
-            localRunner: MockLocalRunner()
+            localRunner: MockLocalRunner(),
+            proxyProbe: MockLocalProxyProbe(isListening: false)
         )
         viewModel.baseURLString = "http://127.0.0.1:18000"
         viewModel.clientToken = "bad-token"
@@ -101,7 +103,7 @@ final class OpenSocksMacCoreTests: XCTestCase {
     }
 
     @MainActor
-    func testConnectUsesSelectedConfig() {
+    func testConnectUsesSelectedConfig() async {
         let config = ClientConfig(
             accessKeyID: UUID(uuidString: "4443f193-4a1b-4cf5-9900-554ac3b333ac")!,
             name: "sergei-spb-key",
@@ -122,12 +124,13 @@ final class OpenSocksMacCoreTests: XCTestCase {
             apiClient: MockAPIClient(result: .success(emptyBootstrap)),
             tokenStore: InMemoryTokenStore(),
             baseURLStore: InMemoryBaseURLStore(),
-            localRunner: runner
+            localRunner: runner,
+            proxyProbe: MockLocalProxyProbe(isListening: true)
         )
         viewModel.proxyBinaryPath = "/opt/homebrew/bin/sslocal"
         viewModel.localSocksPort = "1086"
 
-        viewModel.connect(config: config)
+        await viewModel.connect(config: config)
 
         XCTAssertEqual(runner.startedConfigID, config.id)
         XCTAssertEqual(viewModel.activeAccessKeyID, config.id)
@@ -138,7 +141,7 @@ final class OpenSocksMacCoreTests: XCTestCase {
     }
 
     @MainActor
-    func testConnectRejectsInvalidPort() {
+    func testConnectRejectsInvalidPort() async {
         let config = ClientConfig(
             accessKeyID: UUID(uuidString: "4443f193-4a1b-4cf5-9900-554ac3b333ac")!,
             name: "sergei-spb-key",
@@ -158,11 +161,12 @@ final class OpenSocksMacCoreTests: XCTestCase {
             apiClient: MockAPIClient(result: .success(emptyBootstrap)),
             tokenStore: InMemoryTokenStore(),
             baseURLStore: InMemoryBaseURLStore(),
-            localRunner: MockLocalRunner()
+            localRunner: MockLocalRunner(),
+            proxyProbe: MockLocalProxyProbe(isListening: false)
         )
         viewModel.localSocksPort = "abc"
 
-        viewModel.connect(config: config)
+        await viewModel.connect(config: config)
 
         XCTAssertNil(viewModel.activeAccessKeyID)
         XCTAssertEqual(
@@ -244,5 +248,19 @@ private final class MockLocalRunner: ShadowsocksLocalRunnerProtocol {
 
     func stop() {
         activeAccessKeyID = nil
+    }
+}
+
+private struct MockLocalProxyProbe: LocalProxyProbeProtocol {
+    let isListening: Bool
+
+    func isListening(on port: Int) async -> Bool {
+        _ = port
+        return isListening
+    }
+
+    func waitUntilListening(on port: Int, timeoutNanoseconds: UInt64) async -> Bool {
+        _ = timeoutNanoseconds
+        return await isListening(on: port)
     }
 }

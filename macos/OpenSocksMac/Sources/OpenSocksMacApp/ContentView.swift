@@ -27,6 +27,9 @@ struct ContentView: View {
         }
         .padding(20)
         .frame(minWidth: 760, minHeight: 560)
+        .task {
+            await viewModel.refreshLocalProxyState()
+        }
     }
 
     private var header: some View {
@@ -175,12 +178,16 @@ struct ContentView: View {
                         HStack {
                             if viewModel.isActive(config: config) {
                                 Button("Disconnect") {
-                                    viewModel.disconnect()
+                                    Task {
+                                        await viewModel.disconnect()
+                                    }
                                 }
                             } else {
                                 Button("Connect") {
                                     syncDraftsToViewModel()
-                                    viewModel.connect(config: config)
+                                    Task {
+                                        await viewModel.connect(config: config)
+                                    }
                                 }
                             }
 
