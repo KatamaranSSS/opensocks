@@ -10,6 +10,16 @@ FastAPI-based control plane for the OpenSocks project.
 - configuration delivery for clients
 - admin authentication later
 
+## Current API surface
+
+- `GET /api/v1/health`
+- `GET /api/v1/users`
+- `POST /api/v1/users`
+- `GET /api/v1/users/{user_id}`
+- `GET /api/v1/nodes`
+- `POST /api/v1/nodes`
+- `GET /api/v1/nodes/{node_id}`
+
 ## Local development
 
 Expected command after dependencies are installed:
@@ -19,4 +29,3 @@ pip install -e ".[dev]"
 pytest
 uvicorn app.main:app --reload
 ```
-
