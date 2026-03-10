@@ -15,65 +15,67 @@ if [[ ! -f "deploy/.env.server" ]]; then
   exit 1
 fi
 
-if [[ -f "opensocks-api.tar" ]]; then
-  docker load -i opensocks-api.tar
-  rm -f opensocks-api.tar
-fi
-
 source deploy/.env.server
+
+: "${SSSERVER_PUBLIC_HOST:?Missing SSSERVER_PUBLIC_HOST in deploy/.env.server}"
+: "${SSSERVER_PORT:?Missing SSSERVER_PORT in deploy/.env.server}"
+: "${SSSERVER_METHOD:?Missing SSSERVER_METHOD in deploy/.env.server}"
+: "${SSSERVER_PASSWORD:?Missing SSSERVER_PASSWORD in deploy/.env.server}"
+
+SSSERVER_MODE="${SSSERVER_MODE:-tcp_and_udp}"
+SSSERVER_TIMEOUT="${SSSERVER_TIMEOUT:-60}"
+
+cat >deploy/ssserver.json <<EOF
+{
+  "server": "0.0.0.0",
+  "server_port": ${SSSERVER_PORT},
+  "mode": "${SSSERVER_MODE}",
+  "password": "${SSSERVER_PASSWORD}",
+  "method": "${SSSERVER_METHOD}",
+  "timeout": ${SSSERVER_TIMEOUT}
+}
+EOF
+
+chmod 600 deploy/ssserver.json
+
+if command -v ufw >/dev/null 2>&1; then
+  if ufw status | grep -q '^Status: active'; then
+    ufw allow "${SSSERVER_PORT}/tcp" >/dev/null
+    ufw allow "${SSSERVER_PORT}/udp" >/dev/null
+  fi
+fi
 
 compose_args=(
   --env-file deploy/.env.server
   -f deploy/docker-compose.server.yml
 )
 
-if [[ "${SSSERVER_ENABLED:-false}" == "true" ]]; then
-  compose_args+=(-f deploy/docker-compose.shadowsocks.yml)
-fi
-
-docker compose "${compose_args[@]}" up -d
+docker compose "${compose_args[@]}" up -d --pull always --remove-orphans
 docker compose "${compose_args[@]}" ps
 
-if [[ "${SSSERVER_ENABLED:-false}" == "true" ]]; then
-  for attempt in {1..20}; do
-    if [[ "$(docker inspect -f '{{.State.Running}}' opensocks-ssserver 2>/dev/null || true)" == "true" ]]; then
-      echo "Shadowsocks server is running on tcp/${SSSERVER_PORT}"
-      break
-    fi
-    sleep 2
-  done
-
-  if [[ "$(docker inspect -f '{{.State.Running}}' opensocks-ssserver 2>/dev/null || true)" != "true" ]]; then
-    echo "Shadowsocks server failed to start."
-    docker compose "${compose_args[@]}" logs ssserver
-    exit 1
-  fi
-fi
-
 for attempt in {1..20}; do
-  if curl --fail --silent "http://127.0.0.1:${CLIENT_GATEWAY_PORT:-18080}/api/v1/client/bootstrap" \
-    -H "Authorization: Bearer invalid-token" >/dev/null 2>&1; then
+  if [[ "$(docker inspect -f '{{.State.Running}}' opensocks-ssserver 2>/dev/null || true)" == "true" ]]; then
     break
-  fi
-
-  status_code="$(curl --silent --output /dev/null --write-out '%{http_code}' \
-    "http://127.0.0.1:${CLIENT_GATEWAY_PORT:-18080}/api/v1/client/bootstrap" \
-    -H "Authorization: Bearer invalid-token" || true)"
-  if [[ "${status_code}" == "401" ]]; then
-    echo "Client gateway is reachable on http://127.0.0.1:${CLIENT_GATEWAY_PORT:-18080}"
-    break
-  fi
-  sleep 1
-done
-
-for attempt in {1..20}; do
-  if curl --fail --silent http://127.0.0.1:18000/api/v1/health >/dev/null; then
-    echo "Health check passed on http://127.0.0.1:18000/api/v1/health"
-    exit 0
   fi
   sleep 2
 done
 
-echo "Health check failed after waiting for API readiness."
-docker compose --env-file deploy/.env.server -f deploy/docker-compose.server.yml logs api
-exit 1
+if [[ "$(docker inspect -f '{{.State.Running}}' opensocks-ssserver 2>/dev/null || true)" != "true" ]]; then
+  echo "Shadowsocks server failed to start."
+  docker compose "${compose_args[@]}" logs ssserver
+  exit 1
+fi
+
+if ! ss -lnt | grep -q ":${SSSERVER_PORT}\\b"; then
+  echo "TCP port ${SSSERVER_PORT} is not listening on the host."
+  docker compose "${compose_args[@]}" logs ssserver
+  exit 1
+fi
+
+if ! ss -lnu | grep -q ":${SSSERVER_PORT}\\b"; then
+  echo "UDP port ${SSSERVER_PORT} is not listening on the host."
+  docker compose "${compose_args[@]}" logs ssserver
+  exit 1
+fi
+
+echo "Shadowsocks is up on ${SSSERVER_PUBLIC_HOST}:${SSSERVER_PORT} (${SSSERVER_MODE})."

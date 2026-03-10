@@ -1,4 +1,4 @@
-name: Deploy Test Single Server
+name: Deploy Single Shadowsocks Server
 
 on:
   push:
@@ -7,45 +7,36 @@ on:
   workflow_dispatch:
 
 jobs:
-  test-backend:
+  validate-service:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.13"
-
-      - name: Install backend dependencies
-        working-directory: backend
+      - name: Validate shell scripts
         run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+          bash -n scripts/bootstrap_ubuntu_server.sh
+          bash -n scripts/deploy_remote.sh
+          bash -n scripts/generate_password.sh
+          bash -n scripts/print_ss_config.sh
 
-      - name: Lint backend
-        working-directory: backend
-        run: ruff check app tests
+      - name: Validate docker compose
+        run: docker compose --env-file deploy/.env.server.example -f deploy/docker-compose.server.yml config >/tmp/opensocks-compose.yml
 
-      - name: Run backend tests
-        working-directory: backend
-        run: pytest
+      - name: Validate ss uri generator
+        run: |
+          output="$(bash scripts/print_ss_config.sh smoke-test deploy/.env.server.example)"
+          printf '%s\n' "$output"
+          grep -q '^ss://' <<<"$output"
 
   deploy-test:
     runs-on: ubuntu-latest
-    needs: test-backend
+    needs: validate-service
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Build API image
-        run: docker build -t opensocks-api:latest ./backend
-
-      - name: Export API image
-        run: docker save -o opensocks-api.tar opensocks-api:latest
 
       - name: Start SSH agent
         uses: webfactory/ssh-agent@v0.9.0
@@ -60,9 +51,8 @@ jobs:
           rsync -az --delete \
             -e "ssh -p ${{ secrets.SERVER_PORT }}" \
             --exclude ".git/" \
-            --exclude "__pycache__/" \
-            --exclude "*.pyc" \
             --exclude "deploy/.env.server" \
+            --exclude "deploy/ssserver.json" \
             ./ "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.DEPLOY_PATH }}/"
 
       - name: Run remote deploy

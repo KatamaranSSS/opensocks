@@ -15,3 +15,4 @@ infra/servers.env
 *.log
 __pycache__/
 *.pyc
+deploy/ssserver.json

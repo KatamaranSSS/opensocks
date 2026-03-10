@@ -1,43 +1,14 @@
 services:
-  api:
-    image: ${OPENSOCKS_API_IMAGE:-opensocks-api:latest}
-    container_name: opensocks-api
+  ssserver:
+    image: ${SSSERVER_IMAGE:-ghcr.io/shadowsocks/ssserver-rust:latest}
+    container_name: opensocks-ssserver
     restart: unless-stopped
-    env_file:
-      - .env.server
-    ports:
-      - "127.0.0.1:18000:8000"
-    depends_on:
-      db:
-        condition: service_healthy
-
-  client-gateway:
-    image: nginx:1.27-alpine
-    container_name: opensocks-client-gateway
-    restart: unless-stopped
-    depends_on:
-      api:
-        condition: service_started
-    ports:
-      - "${CLIENT_GATEWAY_PORT:-18080}:18080"
+    command:
+      - "ssserver"
+      - "-c"
+      - "/etc/shadowsocks-rust/config.json"
     volumes:
-      - ./client-gateway.conf:/etc/nginx/conf.d/default.conf:ro
-
-  db:
-    image: postgres:16-alpine
-    container_name: opensocks-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  postgres_data:
+      - ./ssserver.json:/etc/shadowsocks-rust/config.json:ro
+    ports:
+      - "${SSSERVER_PORT}:${SSSERVER_PORT}/tcp"
+      - "${SSSERVER_PORT}:${SSSERVER_PORT}/udp"

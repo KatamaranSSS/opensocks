@@ -1,23 +1,57 @@
-# ShadowSocks
+# OpenSocks
 
-Workspace for building a self-hosted Shadowsocks service and a client application.
+Минимальный репозиторий для одного рабочего сервиса `Shadowsocks` без собственного клиента, панели и backend.
 
-## Current status
+Цель простая:
 
-- Project initialized from scratch
-- Work plan is tracked in `PLAN.md`
-- Deployment will target 2 servers
+1. поднять `ssserver` на VPS;
+2. открыть `tcp+udp` на одном порту;
+3. сгенерировать текстовый `ss://` конфиг;
+4. отдать этот конфиг коллеге;
+5. проверить, что его клиент реально ходит через VPS.
 
-## Repository structure
+## Что осталось в проекте
 
-- `PLAN.md` - main work plan and progress tracker
-- `infra/` - server and deployment preparation
-- `backend/` - FastAPI control plane
-- `macos/OpenSocksMac/` - first native macOS client on SwiftUI + SwiftPM
-- `deploy/` - server compose files for API and Shadowsocks runtime
+- [PLAN.md](/Users/Katan/CodexProjects/ShadowSocks/PLAN.md) - рабочий план и текущий статус
+- [PROJECT_INPUTS.md](/Users/Katan/CodexProjects/ShadowSocks/PROJECT_INPUTS.md) - зафиксированные параметры сервера и текущие решения
+- [deploy/docker-compose.server.yml](/Users/Katan/CodexProjects/ShadowSocks/deploy/docker-compose.server.yml) - один контейнер `ssserver`
+- [deploy/.env.server.example](/Users/Katan/CodexProjects/ShadowSocks/deploy/.env.server.example) - шаблон серверных переменных
+- [scripts/deploy_remote.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/deploy_remote.sh) - удалённый деплой
+- [scripts/print_ss_config.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/print_ss_config.sh) - печать готового `ss://` URI
+- [scripts/generate_password.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/generate_password.sh) - генерация пароля
 
-## Next immediate steps
+## Как это теперь работает
 
-1. Finalize technical decisions
-2. Fill in server access and deployment details
-3. Finish the first macOS client loop and connect it to the live API
+1. На сервере создаётся `deploy/.env.server`.
+2. `scripts/deploy_remote.sh` генерирует `deploy/ssserver.json`.
+3. Docker поднимает `shadowsocks-rust` в режиме `tcp_and_udp`.
+4. Скрипт открывает `tcp/udp` порт в `ufw`, если он включён.
+5. `scripts/print_ss_config.sh` печатает готовый `ss://` конфиг.
+
+## Быстрый запуск
+
+1. Сгенерировать пароль:
+
+```bash
+/Users/Katan/CodexProjects/ShadowSocks/scripts/generate_password.sh
+```
+
+2. Создать на сервере `/opt/opensocks/deploy/.env.server` по шаблону [deploy/.env.server.example](/Users/Katan/CodexProjects/ShadowSocks/deploy/.env.server.example).
+
+3. Запустить деплой:
+
+```bash
+ssh -i ~/.ssh/opensocks_actions root@109.71.246.216 "DEPLOY_PATH=/opt/opensocks bash /opt/opensocks/scripts/deploy_remote.sh"
+```
+
+4. Получить конфиг:
+
+```bash
+/Users/Katan/CodexProjects/ShadowSocks/scripts/print_ss_config.sh sergei-spb-key
+```
+
+## Что считается рабочим результатом
+
+1. Клиент импортирует `ss://` конфиг без ручного редактирования.
+2. После `Connect` открывается `https://api.ipify.org`.
+3. IP в браузере клиента равен IP VPS.
