@@ -59,8 +59,9 @@ ssh -i ~/.ssh/opensocks_actions root@109.71.246.216 "DEPLOY_PATH=/opt/opensocks 
 ```bash
 SSSERVER_OBFS_ENABLED=true
 SSSERVER_PLUGIN=v2ray-plugin
-SSSERVER_OBFS_HOST=www.cloudflare.com
+SSSERVER_OBFS_MODE=websocket
 SSSERVER_OBFS_PATH=/ws
+SSSERVER_OBFS_HOST=
 ```
 
 2. Запустить обычный деплой:

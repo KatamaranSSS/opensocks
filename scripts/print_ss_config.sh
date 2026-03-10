@@ -33,9 +33,13 @@ SSSERVER_OBFS_ENABLED="${SSSERVER_OBFS_ENABLED:-false}"
 
 if [[ "${SSSERVER_OBFS_ENABLED}" == "true" ]]; then
   SSSERVER_PLUGIN="${SSSERVER_PLUGIN:-v2ray-plugin}"
-  SSSERVER_OBFS_HOST="${SSSERVER_OBFS_HOST:-www.cloudflare.com}"
+  SSSERVER_OBFS_MODE="${SSSERVER_OBFS_MODE:-websocket}"
   SSSERVER_OBFS_PATH="${SSSERVER_OBFS_PATH:-/ws}"
-  plugin_value="${SSSERVER_PLUGIN};path=${SSSERVER_OBFS_PATH};host=${SSSERVER_OBFS_HOST}"
+  SSSERVER_OBFS_HOST="${SSSERVER_OBFS_HOST:-}"
+  plugin_value="${SSSERVER_PLUGIN};mode=${SSSERVER_OBFS_MODE};path=${SSSERVER_OBFS_PATH}"
+  if [[ -n "${SSSERVER_OBFS_HOST}" ]]; then
+    plugin_value="${plugin_value};host=${SSSERVER_OBFS_HOST}"
+  fi
   plugin_encoded="$(urlencode "${plugin_value}")"
   printf 'ss://%s@%s:%s/?plugin=%s#%s\n' \
     "${encoded}" "${SSSERVER_PUBLIC_HOST}" "${SSSERVER_PORT}" "${plugin_encoded}" "${CONFIG_NAME}"

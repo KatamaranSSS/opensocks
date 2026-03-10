@@ -31,9 +31,14 @@ if [[ "${SSSERVER_OBFS_ENABLED}" == "true" ]]; then
   SSSERVER_IMAGE="${SSSERVER_IMAGE:-teddysun/shadowsocks-libev:latest}"
   SSSERVER_COMMAND="${SSSERVER_COMMAND:-ss-server -c /etc/shadowsocks/config.json -v}"
   SSSERVER_MODE="tcp_only"
-  SSSERVER_OBFS_HOST="${SSSERVER_OBFS_HOST:-www.cloudflare.com}"
+  SSSERVER_OBFS_MODE="${SSSERVER_OBFS_MODE:-websocket}"
   SSSERVER_OBFS_PATH="${SSSERVER_OBFS_PATH:-/ws}"
-  SSSERVER_PLUGIN_OPTS="${SSSERVER_PLUGIN_OPTS:-server;path=${SSSERVER_OBFS_PATH};host=${SSSERVER_OBFS_HOST}}"
+  SSSERVER_OBFS_HOST="${SSSERVER_OBFS_HOST:-}"
+  if [[ -n "${SSSERVER_OBFS_HOST}" ]]; then
+    SSSERVER_PLUGIN_OPTS="${SSSERVER_PLUGIN_OPTS:-server;mode=${SSSERVER_OBFS_MODE};path=${SSSERVER_OBFS_PATH};host=${SSSERVER_OBFS_HOST}}"
+  else
+    SSSERVER_PLUGIN_OPTS="${SSSERVER_PLUGIN_OPTS:-server;mode=${SSSERVER_OBFS_MODE};path=${SSSERVER_OBFS_PATH}}"
+  fi
 
   cat >deploy/ssserver.json <<EOF
 {
