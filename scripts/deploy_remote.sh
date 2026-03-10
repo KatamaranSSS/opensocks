@@ -22,10 +22,36 @@ source deploy/.env.server
 : "${SSSERVER_METHOD:?Missing SSSERVER_METHOD in deploy/.env.server}"
 : "${SSSERVER_PASSWORD:?Missing SSSERVER_PASSWORD in deploy/.env.server}"
 
+SSSERVER_OBFS_ENABLED="${SSSERVER_OBFS_ENABLED:-false}"
 SSSERVER_MODE="${SSSERVER_MODE:-tcp_and_udp}"
 SSSERVER_TIMEOUT="${SSSERVER_TIMEOUT:-60}"
+SSSERVER_PLUGIN="${SSSERVER_PLUGIN:-v2ray-plugin}"
 
-cat >deploy/ssserver.json <<EOF
+if [[ "${SSSERVER_OBFS_ENABLED}" == "true" ]]; then
+  SSSERVER_IMAGE="${SSSERVER_IMAGE:-teddysun/shadowsocks-libev:latest}"
+  SSSERVER_COMMAND="${SSSERVER_COMMAND:-ss-server -c /etc/shadowsocks/config.json -v}"
+  SSSERVER_MODE="tcp_only"
+  SSSERVER_OBFS_HOST="${SSSERVER_OBFS_HOST:-www.cloudflare.com}"
+  SSSERVER_OBFS_PATH="${SSSERVER_OBFS_PATH:-/ws}"
+  SSSERVER_PLUGIN_OPTS="${SSSERVER_PLUGIN_OPTS:-server;path=${SSSERVER_OBFS_PATH};host=${SSSERVER_OBFS_HOST}}"
+
+  cat >deploy/ssserver.json <<EOF
+{
+  "server": "0.0.0.0",
+  "server_port": ${SSSERVER_PORT},
+  "mode": "${SSSERVER_MODE}",
+  "password": "${SSSERVER_PASSWORD}",
+  "method": "${SSSERVER_METHOD}",
+  "timeout": ${SSSERVER_TIMEOUT},
+  "plugin": "${SSSERVER_PLUGIN}",
+  "plugin_opts": "${SSSERVER_PLUGIN_OPTS}"
+}
+EOF
+else
+  SSSERVER_IMAGE="${SSSERVER_IMAGE:-ghcr.io/shadowsocks/ssserver-rust:latest}"
+  SSSERVER_COMMAND="${SSSERVER_COMMAND:-ssserver -c /etc/shadowsocks/config.json}"
+
+  cat >deploy/ssserver.json <<EOF
 {
   "server": "0.0.0.0",
   "server_port": ${SSSERVER_PORT},
@@ -35,8 +61,10 @@ cat >deploy/ssserver.json <<EOF
   "timeout": ${SSSERVER_TIMEOUT}
 }
 EOF
+fi
 
 chmod 600 deploy/ssserver.json
+export SSSERVER_IMAGE SSSERVER_COMMAND
 
 if command -v ufw >/dev/null 2>&1; then
   if ufw status | grep -q '^Status: active'; then
@@ -72,10 +100,14 @@ if ! ss -lnt | grep -q ":${SSSERVER_PORT}\\b"; then
   exit 1
 fi
 
-if ! ss -lnu | grep -q ":${SSSERVER_PORT}\\b"; then
+if [[ "${SSSERVER_MODE}" == *"udp"* ]] && ! ss -lnu | grep -q ":${SSSERVER_PORT}\\b"; then
   echo "UDP port ${SSSERVER_PORT} is not listening on the host."
   docker compose "${compose_args[@]}" logs ssserver
   exit 1
 fi
 
-echo "Shadowsocks is up on ${SSSERVER_PUBLIC_HOST}:${SSSERVER_PORT} (${SSSERVER_MODE})."
+if [[ "${SSSERVER_OBFS_ENABLED}" == "true" ]]; then
+  echo "Shadowsocks is up on ${SSSERVER_PUBLIC_HOST}:${SSSERVER_PORT} with obfuscation (${SSSERVER_PLUGIN})."
+else
+  echo "Shadowsocks is up on ${SSSERVER_PUBLIC_HOST}:${SSSERVER_PORT} (${SSSERVER_MODE})."
+fi

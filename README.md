@@ -50,6 +50,37 @@ ssh -i ~/.ssh/opensocks_actions root@109.71.246.216 "DEPLOY_PATH=/opt/opensocks 
 /Users/Katan/CodexProjects/ShadowSocks/scripts/print_ss_config.sh sergei-spb-key
 ```
 
+## Obfuscation test branch
+
+Ветка `codex/obfuscation-test` добавляет переключаемую обфускацию через `v2ray-plugin`.
+
+1. В `deploy/.env.server` выставить:
+
+```bash
+SSSERVER_OBFS_ENABLED=true
+SSSERVER_PLUGIN=v2ray-plugin
+SSSERVER_OBFS_HOST=www.cloudflare.com
+SSSERVER_OBFS_PATH=/ws
+```
+
+2. Запустить обычный деплой:
+
+```bash
+ssh -i ~/.ssh/opensocks_actions root@109.71.246.216 "DEPLOY_PATH=/opt/opensocks bash /opt/opensocks/scripts/deploy_remote.sh"
+```
+
+3. Сгенерировать obfs-конфиг:
+
+```bash
+/Users/Katan/CodexProjects/ShadowSocks/scripts/print_ss_config.sh sergei-obfs
+```
+
+4. Для отката:
+
+```bash
+SSSERVER_OBFS_ENABLED=false
+```
+
 ## Что считается рабочим результатом
 
 1. Клиент импортирует `ss://` конфиг без ручного редактирования.

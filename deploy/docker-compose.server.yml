@@ -4,11 +4,11 @@ services:
     container_name: opensocks-ssserver
     restart: unless-stopped
     command:
-      - "ssserver"
-      - "-c"
-      - "/etc/shadowsocks-rust/config.json"
+      - "sh"
+      - "-lc"
+      - "${SSSERVER_COMMAND:-ssserver -c /etc/shadowsocks/config.json}"
     volumes:
-      - ./ssserver.json:/etc/shadowsocks-rust/config.json:ro
+      - ./ssserver.json:/etc/shadowsocks/config.json:ro
     ports:
       - "${SSSERVER_PORT}:${SSSERVER_PORT}/tcp"
       - "${SSSERVER_PORT}:${SSSERVER_PORT}/udp"

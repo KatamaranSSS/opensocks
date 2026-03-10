@@ -29,6 +29,12 @@ jobs:
           output="$(bash scripts/print_ss_config.sh smoke-test deploy/.env.server.example)"
           printf '%s\n' "$output"
           grep -q '^ss://' <<<"$output"
+          obfs_env="$(mktemp)"
+          cp deploy/.env.server.example "$obfs_env"
+          printf '\nSSSERVER_OBFS_ENABLED=true\n' >>"$obfs_env"
+          obfs_output="$(bash scripts/print_ss_config.sh smoke-obfs "$obfs_env")"
+          printf '%s\n' "$obfs_output"
+          grep -q '^ss://.*plugin=' <<<"$obfs_output"
 
   deploy-test:
     runs-on: ubuntu-latest
