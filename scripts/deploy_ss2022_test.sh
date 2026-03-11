@@ -96,7 +96,7 @@ compose_args=(
 )
 
 # Do not use --remove-orphans here to avoid touching the main production stack.
-docker compose "${compose_args[@]}" up -d --pull always
+docker compose "${compose_args[@]}" up -d --pull always --force-recreate ssserver2022
 docker compose "${compose_args[@]}" ps
 
 for attempt in {1..20}; do
