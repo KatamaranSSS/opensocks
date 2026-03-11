@@ -50,6 +50,62 @@ ssh -i ~/.ssh/opensocks_actions root@109.71.246.216 "DEPLOY_PATH=/opt/opensocks 
 /Users/Katan/CodexProjects/ShadowSocks/scripts/print_ss_config.sh sergei-spb-key
 ```
 
+5. Выдать конфиг и записать пользователя в реестр:
+
+```bash
+/Users/Katan/CodexProjects/ShadowSocks/scripts/issue_ss_config.sh ilgam
+```
+
+6. Показать всех пользователей из реестра:
+
+```bash
+/Users/Katan/CodexProjects/ShadowSocks/scripts/list_ss_users.sh
+```
+
+7. Показать все `ss://` конфиги из реестра:
+
+```bash
+/Users/Katan/CodexProjects/ShadowSocks/scripts/list_ss_configs.sh
+```
+
+## Telegram bot (approval flow)
+
+Сценарий:
+
+1. коллега отправляет `/request` боту;
+2. админ получает заявку с кнопками `Принять` и `Отклонить`;
+3. после `Принять` админ отправляет логин;
+4. бот запускает `issue_ss_config.sh` и отправляет пользователю `ss://` конфиг.
+
+Файлы:
+
+- [bot/config_bot.py](/Users/Katan/CodexProjects/ShadowSocks/bot/config_bot.py)
+- [bot/.env.example](/Users/Katan/CodexProjects/ShadowSocks/bot/.env.example)
+- [bot/opensocks-config-bot.service.example](/Users/Katan/CodexProjects/ShadowSocks/bot/opensocks-config-bot.service.example)
+
+Быстрый запуск на сервере:
+
+```bash
+cd /opt/opensocks
+python3 -m venv .venv
+.venv/bin/pip install -r bot/requirements.txt
+cp bot/.env.example bot/.env
+```
+
+Заполни в `bot/.env`:
+
+- `TELEGRAM_BOT_TOKEN`
+- `ADMIN_TELEGRAM_ID`
+
+Подключи сервис:
+
+```bash
+cp bot/opensocks-config-bot.service.example /etc/systemd/system/opensocks-config-bot.service
+systemctl daemon-reload
+systemctl enable --now opensocks-config-bot
+systemctl status opensocks-config-bot --no-pager
+```
+
 ## Obfuscation test branch
 
 Ветка `codex/obfuscation-test` добавляет переключаемую обфускацию через `v2ray-plugin`.

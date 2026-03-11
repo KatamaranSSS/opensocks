@@ -19,10 +19,16 @@ jobs:
           bash -n scripts/bootstrap_ubuntu_server.sh
           bash -n scripts/deploy_remote.sh
           bash -n scripts/generate_password.sh
+          bash -n scripts/issue_ss_config.sh
+          bash -n scripts/list_ss_users.sh
+          bash -n scripts/list_ss_configs.sh
           bash -n scripts/print_ss_config.sh
 
       - name: Validate docker compose
         run: docker compose --env-file deploy/.env.server.example -f deploy/docker-compose.server.yml config >/tmp/opensocks-compose.yml
+
+      - name: Validate bot script syntax
+        run: python3 -m py_compile bot/config_bot.py
 
       - name: Validate ss uri generator
         run: |
