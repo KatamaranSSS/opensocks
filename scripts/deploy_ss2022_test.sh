@@ -27,6 +27,44 @@ SS2022_MODE="${SS2022_MODE:-tcp_and_udp}"
 SS2022_TIMEOUT="${SS2022_TIMEOUT:-60}"
 SS2022_IMAGE="${SS2022_IMAGE:-ghcr.io/shadowsocks/ssserver-rust:latest}"
 SS2022_COMMAND="${SS2022_COMMAND:-ssserver -c /etc/shadowsocks/config.json}"
+SS2022_USERS_FILE="${SS2022_USERS_FILE:-deploy/users-ss2022.txt}"
+
+mkdir -p "$(dirname "${SS2022_USERS_FILE}")"
+touch "${SS2022_USERS_FILE}"
+
+users_json=""
+users_count=0
+
+while IFS= read -r raw_line || [[ -n "${raw_line}" ]]; do
+  line="${raw_line%$'\r'}"
+  line="$(printf '%s' "${line}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  [[ -z "${line}" ]] && continue
+  [[ "${line}" =~ ^# ]] && continue
+
+  name="${line%%:*}"
+  password="${line#*:}"
+
+  if [[ "${line}" == "${name}" ]]; then
+    echo "Invalid SS2022 users line (expected username:password): ${line}" >&2
+    exit 1
+  fi
+
+  if [[ ! "${name}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+    echo "Invalid SS2022 username: ${name}" >&2
+    exit 1
+  fi
+
+  if [[ ! "${password}" =~ ^[A-Za-z0-9+/=]+$ ]]; then
+    echo "Invalid SS2022 password for user ${name}" >&2
+    exit 1
+  fi
+
+  if [[ -n "${users_json}" ]]; then
+    users_json+=$',\n'
+  fi
+  users_json+="    {\"name\": \"${name}\", \"password\": \"${password}\"}"
+  users_count=$((users_count + 1))
+done <"${SS2022_USERS_FILE}"
 
 cat >deploy/ssserver-2022.json <<EOF
 {
@@ -35,6 +73,9 @@ cat >deploy/ssserver-2022.json <<EOF
   "mode": "${SS2022_MODE}",
   "method": "${SS2022_METHOD}",
   "password": "${SS2022_PASSWORD_BASE64}",
+  "users": [
+${users_json}
+  ],
   "timeout": ${SS2022_TIMEOUT}
 }
 EOF
@@ -83,4 +124,4 @@ if [[ "${SS2022_MODE}" == *"udp"* ]] && ! ss -lnu | grep -q ":${SS2022_PORT}\\b"
   exit 1
 fi
 
-echo "SS2022 test server is up on ${SS2022_PUBLIC_HOST}:${SS2022_PORT} (${SS2022_MODE})."
+echo "SS2022 test server is up on ${SS2022_PUBLIC_HOST}:${SS2022_PORT} (${SS2022_MODE}), users=${users_count}."

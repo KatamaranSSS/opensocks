@@ -22,8 +22,11 @@ jobs:
           bash -n scripts/generate_password.sh
           bash -n scripts/generate_ss2022_key.sh
           bash -n scripts/issue_ss_config.sh
+          bash -n scripts/issue_ss2022_user.sh
           bash -n scripts/remove_ss_user.sh
+          bash -n scripts/remove_ss2022_user.sh
           bash -n scripts/list_ss_users.sh
+          bash -n scripts/list_ss2022_users.sh
           bash -n scripts/list_ss_configs.sh
           bash -n scripts/print_ss_config.sh
           bash -n scripts/print_ss2022_config.sh
@@ -47,7 +50,10 @@ jobs:
           obfs_output="$(bash scripts/print_ss_config.sh smoke-obfs "$obfs_env")"
           printf '%s\n' "$obfs_output"
           grep -q '^ss://.*plugin=' <<<"$obfs_output"
-          ss2022_output="$(bash scripts/print_ss2022_config.sh smoke-2022 deploy/.env.server.example)"
+          users_file="$(mktemp)"
+          user_key="$(bash scripts/generate_ss2022_key.sh 2022-blake3-aes-128-gcm)"
+          printf 'smoke-2022:%s\n' "$user_key" >"$users_file"
+          ss2022_output="$(bash scripts/print_ss2022_config.sh smoke-2022 deploy/.env.server.example "$users_file")"
           printf '%s\n' "$ss2022_output"
           grep -q '^ss://' <<<"$ss2022_output"
 

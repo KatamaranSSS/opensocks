@@ -19,7 +19,10 @@
 - [scripts/deploy_remote.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/deploy_remote.sh) - удалённый деплой
 - [scripts/print_ss_config.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/print_ss_config.sh) - печать готового `ss://` URI
 - [scripts/deploy_ss2022_test.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/deploy_ss2022_test.sh) - отдельный тестовый deploy для SS2022
-- [scripts/print_ss2022_config.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/print_ss2022_config.sh) - печать тестового `ss://` URI для SS2022
+- [scripts/issue_ss2022_user.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/issue_ss2022_user.sh) - выдача пользователя SS2022 с персональным ключом
+- [scripts/print_ss2022_config.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/print_ss2022_config.sh) - печать персонального `ss://` URI для SS2022
+- [scripts/list_ss2022_users.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/list_ss2022_users.sh) - список пользователей SS2022
+- [scripts/remove_ss2022_user.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/remove_ss2022_user.sh) - удаление пользователя SS2022
 - [scripts/generate_ss2022_key.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/generate_ss2022_key.sh) - генерация валидного SS2022 ключа
 - [scripts/remove_ss_user.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/remove_ss_user.sh) - удаление пользователя из реестра
 - [scripts/generate_password.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/generate_password.sh) - генерация пароля
@@ -158,6 +161,7 @@ SSSERVER_OBFS_ENABLED=false
 ## Isolated SS2022 test (does not touch main 8389)
 
 Этот контур поднимается отдельным контейнером и отдельным портом, чтобы не ломать рабочий `chacha20-ietf-poly1305` на `8389`.
+Он настроен как `1 порт + много паролей` через `users` в SS2022.
 
 1. В `deploy/.env.server` добавь/проверь переменные:
 
@@ -168,6 +172,7 @@ SS2022_MODE=tcp_and_udp
 SS2022_METHOD=2022-blake3-aes-128-gcm
 SS2022_PASSWORD_BASE64=<вывод scripts/generate_ss2022_key.sh>
 SS2022_TIMEOUT=60
+SS2022_USERS_FILE=deploy/users-ss2022.txt
 ```
 
 2. Сгенерируй ключ:
@@ -185,7 +190,13 @@ ssh -i ~/.ssh/opensocks_actions root@109.71.246.216 "DEPLOY_PATH=/opt/opensocks 
 4. Получи тестовый конфиг:
 
 ```bash
-/Users/Katan/CodexProjects/ShadowSocks/scripts/print_ss2022_config.sh happ-ss2022-test
+/Users/Katan/CodexProjects/ShadowSocks/scripts/issue_ss2022_user.sh happ-ss2022-test
+```
+
+5. Применить изменения users на сервере (после добавления/удаления пользователя):
+
+```bash
+ssh -i ~/.ssh/opensocks_actions root@109.71.246.216 "DEPLOY_PATH=/opt/opensocks bash /opt/opensocks/scripts/deploy_ss2022_test.sh"
 ```
 
 ## Что считается рабочим результатом
