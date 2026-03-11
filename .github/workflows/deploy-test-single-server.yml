@@ -20,6 +20,7 @@ jobs:
           bash -n scripts/deploy_remote.sh
           bash -n scripts/generate_password.sh
           bash -n scripts/issue_ss_config.sh
+          bash -n scripts/remove_ss_user.sh
           bash -n scripts/list_ss_users.sh
           bash -n scripts/list_ss_configs.sh
           bash -n scripts/print_ss_config.sh
@@ -63,8 +64,12 @@ jobs:
           rsync -az --delete \
             -e "ssh -p ${{ secrets.SERVER_PORT }}" \
             --exclude ".git/" \
+            --exclude ".venv/" \
+            --exclude "bot/.env" \
             --exclude "deploy/.env.server" \
             --exclude "deploy/ssserver.json" \
+            --exclude "deploy/users.txt" \
+            --exclude "deploy/bot_state.json" \
             ./ "${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:${{ secrets.DEPLOY_PATH }}/"
 
       - name: Run remote deploy

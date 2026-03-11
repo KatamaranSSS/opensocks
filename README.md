@@ -18,6 +18,7 @@
 - [deploy/.env.server.example](/Users/Katan/CodexProjects/ShadowSocks/deploy/.env.server.example) - шаблон серверных переменных
 - [scripts/deploy_remote.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/deploy_remote.sh) - удалённый деплой
 - [scripts/print_ss_config.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/print_ss_config.sh) - печать готового `ss://` URI
+- [scripts/remove_ss_user.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/remove_ss_user.sh) - удаление пользователя из реестра
 - [scripts/generate_password.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/generate_password.sh) - генерация пароля
 
 ## Как это теперь работает
@@ -76,6 +77,15 @@ ssh -i ~/.ssh/opensocks_actions root@109.71.246.216 "DEPLOY_PATH=/opt/opensocks 
 2. админ получает заявку с кнопками `Принять` и `Отклонить`;
 3. после `Принять` админ отправляет логин;
 4. бот запускает `issue_ss_config.sh` и отправляет пользователю `ss://` конфиг.
+5. один Telegram user может получить только один выданный конфиг; повторный `/request` блокируется.
+
+Дополнительно для админа:
+
+- `/newcfg` - ручной выпуск: бот просит логин и сразу выдает конфиг;
+- `/configs` - inline-кнопки с логинами из `users.txt`;
+- тап по логину -> бот присылает конфиг в code block + кнопку `Удалить конфиг`;
+- `Удалить конфиг` удаляет логин из `users.txt` и снимает лимит для привязанного Telegram user;
+- `/cancel` - отмена текущего admin-flow.
 
 Файлы:
 
@@ -96,6 +106,10 @@ cp bot/.env.example bot/.env
 
 - `TELEGRAM_BOT_TOKEN`
 - `ADMIN_TELEGRAM_ID`
+- `ISSUE_SCRIPT_PATH` (по умолчанию уже задан)
+- `PRINT_SCRIPT_PATH` (по умолчанию уже задан)
+- `REMOVE_SCRIPT_PATH` (по умолчанию уже задан)
+- `LIST_USERS_SCRIPT_PATH` (по умолчанию уже задан)
 
 Подключи сервис:
 
