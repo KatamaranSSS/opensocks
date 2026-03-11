@@ -17,5 +17,6 @@ infra/servers.env
 __pycache__/
 *.pyc
 deploy/ssserver.json
+deploy/ssserver-2022.json
 deploy/users.txt
 bot/.env

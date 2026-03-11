@@ -18,15 +18,20 @@ jobs:
         run: |
           bash -n scripts/bootstrap_ubuntu_server.sh
           bash -n scripts/deploy_remote.sh
+          bash -n scripts/deploy_ss2022_test.sh
           bash -n scripts/generate_password.sh
+          bash -n scripts/generate_ss2022_key.sh
           bash -n scripts/issue_ss_config.sh
           bash -n scripts/remove_ss_user.sh
           bash -n scripts/list_ss_users.sh
           bash -n scripts/list_ss_configs.sh
           bash -n scripts/print_ss_config.sh
+          bash -n scripts/print_ss2022_config.sh
 
       - name: Validate docker compose
-        run: docker compose --env-file deploy/.env.server.example -f deploy/docker-compose.server.yml config >/tmp/opensocks-compose.yml
+        run: |
+          docker compose --env-file deploy/.env.server.example -f deploy/docker-compose.server.yml config >/tmp/opensocks-compose.yml
+          docker compose --env-file deploy/.env.server.example -f deploy/docker-compose.ss2022-test.yml config >/tmp/opensocks-compose-ss2022.yml
 
       - name: Validate bot script syntax
         run: python3 -m py_compile bot/config_bot.py
@@ -42,6 +47,9 @@ jobs:
           obfs_output="$(bash scripts/print_ss_config.sh smoke-obfs "$obfs_env")"
           printf '%s\n' "$obfs_output"
           grep -q '^ss://.*plugin=' <<<"$obfs_output"
+          ss2022_output="$(bash scripts/print_ss2022_config.sh smoke-2022 deploy/.env.server.example)"
+          printf '%s\n' "$ss2022_output"
+          grep -q '^ss://' <<<"$ss2022_output"
 
   deploy-test:
     runs-on: ubuntu-latest

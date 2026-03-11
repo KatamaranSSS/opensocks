@@ -1,0 +1,14 @@
+services:
+  ssserver2022:
+    image: ${SS2022_IMAGE:-ghcr.io/shadowsocks/ssserver-rust:latest}
+    container_name: opensocks-ssserver-2022
+    restart: unless-stopped
+    command:
+      - "sh"
+      - "-lc"
+      - "${SS2022_COMMAND:-ssserver -c /etc/shadowsocks/config.json}"
+    volumes:
+      - ./ssserver-2022.json:/etc/shadowsocks/config.json:ro
+    ports:
+      - "${SS2022_PORT}:${SS2022_PORT}/tcp"
+      - "${SS2022_PORT}:${SS2022_PORT}/udp"

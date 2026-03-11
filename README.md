@@ -18,6 +18,9 @@
 - [deploy/.env.server.example](/Users/Katan/CodexProjects/ShadowSocks/deploy/.env.server.example) - шаблон серверных переменных
 - [scripts/deploy_remote.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/deploy_remote.sh) - удалённый деплой
 - [scripts/print_ss_config.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/print_ss_config.sh) - печать готового `ss://` URI
+- [scripts/deploy_ss2022_test.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/deploy_ss2022_test.sh) - отдельный тестовый deploy для SS2022
+- [scripts/print_ss2022_config.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/print_ss2022_config.sh) - печать тестового `ss://` URI для SS2022
+- [scripts/generate_ss2022_key.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/generate_ss2022_key.sh) - генерация валидного SS2022 ключа
 - [scripts/remove_ss_user.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/remove_ss_user.sh) - удаление пользователя из реестра
 - [scripts/generate_password.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/generate_password.sh) - генерация пароля
 
@@ -150,6 +153,39 @@ ssh -i ~/.ssh/opensocks_actions root@109.71.246.216 "DEPLOY_PATH=/opt/opensocks 
 
 ```bash
 SSSERVER_OBFS_ENABLED=false
+```
+
+## Isolated SS2022 test (does not touch main 8389)
+
+Этот контур поднимается отдельным контейнером и отдельным портом, чтобы не ломать рабочий `chacha20-ietf-poly1305` на `8389`.
+
+1. В `deploy/.env.server` добавь/проверь переменные:
+
+```bash
+SS2022_PUBLIC_HOST=109.71.246.216
+SS2022_PORT=8391
+SS2022_MODE=tcp_and_udp
+SS2022_METHOD=2022-blake3-aes-128-gcm
+SS2022_PASSWORD_BASE64=<вывод scripts/generate_ss2022_key.sh>
+SS2022_TIMEOUT=60
+```
+
+2. Сгенерируй ключ:
+
+```bash
+/Users/Katan/CodexProjects/ShadowSocks/scripts/generate_ss2022_key.sh
+```
+
+3. Подними только тестовый SS2022:
+
+```bash
+ssh -i ~/.ssh/opensocks_actions root@109.71.246.216 "DEPLOY_PATH=/opt/opensocks bash /opt/opensocks/scripts/deploy_ss2022_test.sh"
+```
+
+4. Получи тестовый конфиг:
+
+```bash
+/Users/Katan/CodexProjects/ShadowSocks/scripts/print_ss2022_config.sh happ-ss2022-test
 ```
 
 ## Что считается рабочим результатом
