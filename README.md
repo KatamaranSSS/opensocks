@@ -24,6 +24,11 @@
 - [scripts/list_ss2022_users.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/list_ss2022_users.sh) - список пользователей SS2022
 - [scripts/remove_ss2022_user.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/remove_ss2022_user.sh) - удаление пользователя SS2022
 - [scripts/generate_ss2022_key.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/generate_ss2022_key.sh) - генерация валидного SS2022 ключа
+- [scripts/deploy_multi_user.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/deploy_multi_user.sh) - реальный multi-user (уникальные порт+пароль на пользователя)
+- [scripts/issue_multi_user.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/issue_multi_user.sh) - выдать нового пользователя multi-user
+- [scripts/print_multi_user_config.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/print_multi_user_config.sh) - печать `ss://` конфига пользователя multi-user
+- [scripts/list_multi_users.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/list_multi_users.sh) - список пользователей multi-user
+- [scripts/remove_multi_user.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/remove_multi_user.sh) - удаление пользователя multi-user
 - [scripts/remove_ss_user.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/remove_ss_user.sh) - удаление пользователя из реестра
 - [scripts/generate_password.sh](/Users/Katan/CodexProjects/ShadowSocks/scripts/generate_password.sh) - генерация пароля
 
@@ -197,6 +202,47 @@ ssh -i ~/.ssh/opensocks_actions root@109.71.246.216 "DEPLOY_PATH=/opt/opensocks 
 
 ```bash
 ssh -i ~/.ssh/opensocks_actions root@109.71.246.216 "DEPLOY_PATH=/opt/opensocks bash /opt/opensocks/scripts/deploy_ss2022_test.sh"
+```
+
+## Real Multi-user (recommended for production)
+
+Этот режим работает как "реальный multi-user": у каждого пользователя свой порт и свой пароль.
+
+1. Добавь в `deploy/.env.server`:
+
+```bash
+SS_MULTI_PUBLIC_HOST=109.71.246.216
+SS_MULTI_IMAGE=ghcr.io/shadowsocks/ssserver-rust:latest
+SS_MULTI_MODE=tcp_and_udp
+SS_MULTI_DEFAULT_METHOD=chacha20-ietf-poly1305
+SS_MULTI_TIMEOUT=60
+SS_MULTI_USERS_FILE=deploy/users-multi.txt
+SS_MULTI_PORT_MIN=20000
+SS_MULTI_PORT_MAX=29999
+```
+
+2. Выдай пользователя (создаст уникальный порт+пароль и вернет `ss://`):
+
+```bash
+/Users/Katan/CodexProjects/ShadowSocks/scripts/issue_multi_user.sh ilgam
+```
+
+3. Применить изменения на сервере:
+
+```bash
+ssh -i ~/.ssh/opensocks_actions root@109.71.246.216 "DEPLOY_PATH=/opt/opensocks bash /opt/opensocks/scripts/deploy_multi_user.sh"
+```
+
+4. Показать пользователей и их порты:
+
+```bash
+/Users/Katan/CodexProjects/ShadowSocks/scripts/list_multi_users.sh
+```
+
+5. Удалить пользователя (после удаления снова запусти deploy из шага 3):
+
+```bash
+/Users/Katan/CodexProjects/ShadowSocks/scripts/remove_multi_user.sh ilgam
 ```
 
 ## Что считается рабочим результатом

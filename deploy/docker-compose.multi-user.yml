@@ -1,0 +1,12 @@
+services:
+  ssserver-multi:
+    image: ${SS_MULTI_IMAGE:-ghcr.io/shadowsocks/ssserver-rust:latest}
+    container_name: opensocks-ssserver-multi
+    restart: unless-stopped
+    network_mode: host
+    command:
+      - "sh"
+      - "-lc"
+      - "${SS_MULTI_COMMAND:-ssserver -c /etc/shadowsocks/config.json}"
+    volumes:
+      - ./ssserver-multi.json:/etc/shadowsocks/config.json:ro

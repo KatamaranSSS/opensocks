@@ -19,5 +19,7 @@ __pycache__/
 deploy/ssserver.json
 deploy/ssserver-2022.json
 deploy/users-ss2022.txt
+deploy/ssserver-multi.json
+deploy/users-multi.txt
 deploy/users.txt
 bot/.env
