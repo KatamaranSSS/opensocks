@@ -8,6 +8,7 @@ import re
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from html import escape
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +18,7 @@ from telegram import (
     ReplyKeyboardMarkup,
     Update,
 )
+from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -27,6 +29,7 @@ from telegram.ext import (
 )
 
 USERNAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
+PLACEHOLDER_GUIDE_URL = "https://www.google.com"
 
 
 @dataclass(frozen=True)
@@ -292,6 +295,22 @@ def _extract_usernames(stdout: str) -> list[str]:
     return names
 
 
+def format_config_message(config: str, username: str | None = None) -> str:
+    parts: list[str] = []
+    if username:
+        parts.append(f"Логин: <b>{escape(username)}</b>")
+    parts.append("Ваш конфиг:")
+    parts.append(f"<pre>{escape(config)}</pre>")
+    parts.append(
+        f'<a href="{PLACEHOLDER_GUIDE_URL}">Инструкция для телефона</a>'
+    )
+    parts.append(
+        f'<a href="{PLACEHOLDER_GUIDE_URL}">Инструкция для ПК</a>'
+    )
+    parts.append("Вы можете использовать 1 конфиг на нескольких устройствах.")
+    return "\n\n".join(parts)
+
+
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     settings: Settings = context.application.bot_data["settings"]
     if is_admin(update, settings):
@@ -496,7 +515,11 @@ async def on_admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     config = _extract_config(stdout)
     if action.get("type") == "manual_issue":
-        await message.reply_text(f"Конфиг:\n{config}")
+        await message.reply_text(
+            format_config_message(config, username=login),
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
+        )
         return
 
     if action.get("type") != "approve_request":
@@ -511,11 +534,9 @@ async def on_admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     await context.bot.send_message(
         chat_id=int(request["chat_id"]),
-        text=(
-            "Ваш конфиг готов:\n\n"
-            f"{config}\n\n"
-            "Импортируйте его в клиент Shadowsocks."
-        ),
+        text=format_config_message(config),
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True,
     )
     await message.reply_text(
         f"Конфиг выдан.\nrequest_id={req_id}\nlogin={login}\nuser_id={request['user_id']}"
@@ -589,10 +610,12 @@ async def on_config_show(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     config = _extract_config(stdout)
-    text = f"Логин: {username}\n{config}"
+    text = format_config_message(config, username=username)
     if query.message:
         await query.message.reply_text(
             text,
+            parse_mode=ParseMode.HTML,
+            disable_web_page_preview=True,
             reply_markup=delete_keyboard(username),
         )
         return
@@ -600,6 +623,8 @@ async def on_config_show(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await context.bot.send_message(
         chat_id=settings.admin_telegram_id,
         text=text,
+        parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True,
         reply_markup=delete_keyboard(username),
     )
 
