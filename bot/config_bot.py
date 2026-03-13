@@ -347,11 +347,12 @@ async def cmd_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     )
 
     await update.effective_message.reply_text("Заявка отправлена администратору.")
+    username_display = f"@{user.username}" if user.username else "(без username)"
     admin_text = (
         "Новая заявка на конфиг\n"
         f"request_id: {req_id}\n"
         f"user_id: {user.id}\n"
-        f"username: {user.username or '-'}\n"
+        f"username: {username_display}\n"
         f"full_name: {user.full_name}\n\n"
         "Нажмите Принять или Отклонить."
     )
