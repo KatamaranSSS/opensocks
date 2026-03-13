@@ -29,7 +29,17 @@ from telegram.ext import (
 )
 
 USERNAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
-PLACEHOLDER_GUIDE_URL = "https://www.google.com"
+PHONE_GUIDE_URL = (
+    "https://drive.google.com/file/d/1RjaiAbUmZk0BWpaz0vFMhq_E_DZqpXRM/view?usp=sharing"
+)
+IPHONE_APP_URL = "https://apps.apple.com/us/app/happ-proxy-utility/id6504287215?l=ru"
+ANDROID_APP_URL = (
+    "https://play.google.com/store/apps/details?id=com.happproxy&pcampaignid=web_share"
+)
+DESKTOP_GUIDE_URL = (
+    "https://drive.google.com/file/d/11t1R3mSg2E-RV60w2032wFh8FhyuI4RU/view?usp=sharing"
+)
+DESKTOP_APP_URL = "https://www.happ.su/main/ru"
 
 
 @dataclass(frozen=True)
@@ -302,10 +312,13 @@ def format_config_message(config: str, username: str | None = None) -> str:
     parts.append("Ваш конфиг:")
     parts.append(f"<pre>{escape(config)}</pre>")
     parts.append(
-        f'<a href="{PLACEHOLDER_GUIDE_URL}">Инструкция для телефона</a>'
+        f'<a href="{PHONE_GUIDE_URL}">Инструкция для телефона</a>\n'
+        f'<a href="{IPHONE_APP_URL}">Приложение для IPhone</a>\n'
+        f'<a href="{ANDROID_APP_URL}">Приложение для Android</a>'
     )
     parts.append(
-        f'<a href="{PLACEHOLDER_GUIDE_URL}">Инструкция для ПК</a>'
+        f'<a href="{DESKTOP_GUIDE_URL}">Инструкция для ПК</a>\n'
+        f'<a href="{DESKTOP_APP_URL}">Приложение для ПК</a>'
     )
     parts.append("Вы можете использовать 1 конфиг на нескольких устройствах.")
     return "\n\n".join(parts)
