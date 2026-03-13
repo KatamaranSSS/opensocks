@@ -654,9 +654,7 @@ async def on_config_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     suffix = ""
     if removed_users:
         suffix = f"\nСнят лимит по user_id: {', '.join(map(str, removed_users))}"
-    await query.edit_message_text(
-        f"Конфиг `{username}` удален.{suffix}", parse_mode=ParseMode.MARKDOWN
-    )
+    await query.edit_message_text(f"Конфиг {username} удален.{suffix}")
 
 
 def build_app(settings: Settings) -> Application:
