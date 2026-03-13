@@ -348,18 +348,17 @@ async def cmd_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     await update.effective_message.reply_text("Заявка отправлена администратору.")
     admin_text = (
-        "*Новая заявка на конфиг*\n"
-        f"- request_id: `{req_id}`\n"
-        f"- user_id: `{user.id}`\n"
-        f"- username: `{user.username or '-'}`\n"
-        f"- full_name: `{user.full_name}`\n\n"
-        "Нажмите *Принять* или *Отклонить*."
+        "Новая заявка на конфиг\n"
+        f"request_id: {req_id}\n"
+        f"user_id: {user.id}\n"
+        f"username: {user.username or '-'}\n"
+        f"full_name: {user.full_name}\n\n"
+        "Нажмите Принять или Отклонить."
     )
     await context.bot.send_message(
         chat_id=settings.admin_telegram_id,
         text=admin_text,
         reply_markup=request_keyboard(req_id),
-        parse_mode=ParseMode.MARKDOWN,
     )
 
 
