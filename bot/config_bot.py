@@ -156,10 +156,32 @@ class StateStore:
     async def remove_issued_by_login(self, login: str) -> list[int]:
         async with self.lock:
             removed: list[int] = []
+            removed_user_ids: set[str] = set()
             for user_id, assigned_login in list(self.data["issued_login_by_user"].items()):
                 if assigned_login == login:
                     removed.append(int(user_id))
+                    removed_user_ids.add(user_id)
                     del self.data["issued_login_by_user"][user_id]
+
+            affected_request_ids: set[str] = set()
+            for user_id in removed_user_ids:
+                request_id = self.data["active_by_user"].pop(user_id, None)
+                if request_id:
+                    affected_request_ids.add(str(request_id))
+
+            for request_id, request in self.data["requests"].items():
+                if str(request.get("user_id")) in removed_user_ids:
+                    request["status"] = "reset_by_admin"
+                    self.data["requests"][request_id] = request
+                    affected_request_ids.add(str(request_id))
+
+            for admin_id, action in list(self.data["awaiting_admin_action"].items()):
+                if (
+                    isinstance(action, dict)
+                    and str(action.get("request_id", "")) in affected_request_ids
+                ):
+                    del self.data["awaiting_admin_action"][admin_id]
+
             await self._save_locked()
             return removed
 
@@ -680,7 +702,10 @@ async def on_config_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     removed_users = await store.remove_issued_by_login(username)
     suffix = ""
     if removed_users:
-        suffix = f"\nСнят лимит по user_id: {', '.join(map(str, removed_users))}"
+        suffix = (
+            f"\nСнят лимит по user_id: {', '.join(map(str, removed_users))}"
+            "\nПользователь может отправить запрос еще раз."
+        )
     await query.edit_message_text(f"Конфиг {username} удален.{suffix}")
 
 
