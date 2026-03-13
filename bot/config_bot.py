@@ -17,7 +17,6 @@ from telegram import (
     ReplyKeyboardMarkup,
     Update,
 )
-from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -308,12 +307,11 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     else:
         text = (
             "Нажмите /request чтобы запросить конфиг.\n"
-            "После подтверждения админом бот пришлет вам `ss://` ссылку."
+            "После подтверждения админом бот пришлет вам ss:// ссылку."
         )
         reply_markup = user_commands_keyboard()
     await update.effective_message.reply_text(
         text,
-        parse_mode=ParseMode.MARKDOWN,
         reply_markup=reply_markup,
     )
 
@@ -395,9 +393,7 @@ async def on_request_decision(
             chat_id=int(request["chat_id"]),
             text="Заявка отклонена администратором.",
         )
-        await query.edit_message_text(
-            f"Заявка `{req_id}` отклонена.", parse_mode=ParseMode.MARKDOWN
-        )
+        await query.edit_message_text(f"Заявка {req_id} отклонена.")
         return
 
     if action != "approve":
@@ -410,8 +406,7 @@ async def on_request_decision(
         {"type": "approve_request", "request_id": req_id},
     )
     await query.edit_message_text(
-        f"Заявка `{req_id}` принята.\nОтправьте логин для пользователя одним сообщением.",
-        parse_mode=ParseMode.MARKDOWN,
+        f"Заявка {req_id} принята.\nОтправьте логин для пользователя одним сообщением."
     )
 
 
@@ -501,10 +496,7 @@ async def on_admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     config = _extract_config(stdout)
     if action.get("type") == "manual_issue":
-        await message.reply_text(
-            f"```text\n{config}\n```",
-            parse_mode=ParseMode.MARKDOWN,
-        )
+        await message.reply_text(f"Конфиг:\n{config}")
         return
 
     if action.get("type") != "approve_request":
@@ -521,10 +513,9 @@ async def on_admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         chat_id=int(request["chat_id"]),
         text=(
             "Ваш конфиг готов:\n\n"
-            f"```text\n{config}\n```\n\n"
+            f"{config}\n\n"
             "Импортируйте его в клиент Shadowsocks."
         ),
-        parse_mode=ParseMode.MARKDOWN,
     )
     await message.reply_text(
         f"Конфиг выдан.\nrequest_id={req_id}\nlogin={login}\nuser_id={request['user_id']}"
@@ -598,11 +589,10 @@ async def on_config_show(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         return
 
     config = _extract_config(stdout)
-    text = f"Логин: `{username}`\n```text\n{config}\n```"
+    text = f"Логин: {username}\n{config}"
     if query.message:
         await query.message.reply_text(
             text,
-            parse_mode=ParseMode.MARKDOWN,
             reply_markup=delete_keyboard(username),
         )
         return
@@ -610,7 +600,6 @@ async def on_config_show(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     await context.bot.send_message(
         chat_id=settings.admin_telegram_id,
         text=text,
-        parse_mode=ParseMode.MARKDOWN,
         reply_markup=delete_keyboard(username),
     )
 
