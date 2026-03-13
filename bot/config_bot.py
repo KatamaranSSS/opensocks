@@ -33,6 +33,7 @@ class Settings:
     print_script: str
     remove_script: str
     users_script: str
+    apply_script: str
     env_file: str
     users_file: str
     state_file: str
@@ -55,19 +56,24 @@ class Settings:
             bot_token=token,
             admin_telegram_id=admin_id,
             issue_script=os.getenv(
-                "ISSUE_SCRIPT_PATH", "/opt/opensocks/scripts/issue_ss_config.sh"
+                "ISSUE_SCRIPT_PATH", "/opt/opensocks/scripts/issue_multi_user.sh"
             ),
             print_script=os.getenv(
-                "PRINT_SCRIPT_PATH", "/opt/opensocks/scripts/print_ss_config.sh"
+                "PRINT_SCRIPT_PATH", "/opt/opensocks/scripts/print_multi_user_config.sh"
             ),
             remove_script=os.getenv(
-                "REMOVE_SCRIPT_PATH", "/opt/opensocks/scripts/remove_ss_user.sh"
+                "REMOVE_SCRIPT_PATH", "/opt/opensocks/scripts/remove_multi_user.sh"
             ),
             users_script=os.getenv(
-                "LIST_USERS_SCRIPT_PATH", "/opt/opensocks/scripts/list_ss_users.sh"
+                "LIST_USERS_SCRIPT_PATH", "/opt/opensocks/scripts/list_multi_users.sh"
+            ),
+            apply_script=os.getenv(
+                "APPLY_SCRIPT_PATH", "/opt/opensocks/scripts/deploy_multi_user.sh"
             ),
             env_file=os.getenv("OPENSOCKS_ENV_FILE", "/opt/opensocks/deploy/.env.server"),
-            users_file=os.getenv("OPENSOCKS_USERS_FILE", "/opt/opensocks/deploy/users.txt"),
+            users_file=os.getenv(
+                "OPENSOCKS_USERS_FILE", "/opt/opensocks/deploy/users-multi.txt"
+            ),
             state_file=os.getenv("BOT_STATE_FILE", "/opt/opensocks/deploy/bot_state.json"),
         )
 
@@ -245,6 +251,22 @@ def delete_keyboard(username: str) -> InlineKeyboardMarkup:
 def _extract_config(stdout: str) -> str:
     lines = [line.strip() for line in stdout.splitlines() if line.strip()]
     return lines[-1] if lines else ""
+
+
+def _extract_usernames(stdout: str) -> list[str]:
+    names: list[str] = []
+    seen: set[str] = set()
+
+    for raw in stdout.splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        # Supports both plain "username" and tab-separated "username\tport\tmethod".
+        username = line.split()[0]
+        if USERNAME_RE.match(username) and username not in seen:
+            seen.add(username)
+            names.append(username)
+    return names
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -436,6 +458,17 @@ async def on_admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         )
         return
 
+    apply_code, apply_out, apply_err = await run_script(settings.apply_script)
+    if apply_code != 0:
+        await store.set_admin_action(settings.admin_telegram_id, action)
+        await message.reply_text(
+            "Конфиг добавлен в реестр, но не применен на сервере:\n"
+            f"code={apply_code}\n"
+            f"{apply_err.strip() or apply_out.strip() or 'no output'}\n\n"
+            "Исправьте ошибку и отправьте логин еще раз, либо /cancel."
+        )
+        return
+
     config = _extract_config(stdout)
     if action.get("type") == "manual_issue":
         await message.reply_text(
@@ -499,7 +532,7 @@ async def cmd_configs(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         )
         return
 
-    users = [line.strip() for line in stdout.splitlines() if line.strip()]
+    users = _extract_usernames(stdout)
     if not users:
         await update.effective_message.reply_text("Пользователей нет.")
         return
@@ -578,11 +611,22 @@ async def on_config_delete(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         )
         return
 
+    apply_code, apply_out, apply_err = await run_script(settings.apply_script)
+    if apply_code != 0:
+        await query.edit_message_text(
+            "Пользователь удален из реестра, но изменения не применены на сервере:\n"
+            f"code={apply_code}\n"
+            f"{apply_err.strip() or apply_out.strip() or 'no output'}"
+        )
+        return
+
     removed_users = await store.remove_issued_by_login(username)
     suffix = ""
     if removed_users:
         suffix = f"\nСнят лимит по user_id: {', '.join(map(str, removed_users))}"
-    await query.edit_message_text(f"Конфиг `{username}` удален.{suffix}", parse_mode=ParseMode.MARKDOWN)
+    await query.edit_message_text(
+        f"Конфиг `{username}` удален.{suffix}", parse_mode=ParseMode.MARKDOWN
+    )
 
 
 def build_app(settings: Settings) -> Application:

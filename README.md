@@ -87,16 +87,18 @@ ssh -i ~/.ssh/opensocks_actions root@109.71.246.216 "DEPLOY_PATH=/opt/opensocks 
 1. коллега отправляет `/request` боту;
 2. админ получает заявку с кнопками `Принять` и `Отклонить`;
 3. после `Принять` админ отправляет логин;
-4. бот запускает `issue_ss_config.sh` и отправляет пользователю `ss://` конфиг.
+4. бот запускает `issue_multi_user.sh`, применяет изменения через `deploy_multi_user.sh` и отправляет пользователю `ss://` конфиг.
 5. один Telegram user может получить только один выданный конфиг; повторный `/request` блокируется.
 
 Дополнительно для админа:
 
 - `/newcfg` - ручной выпуск: бот просит логин и сразу выдает конфиг;
-- `/configs` - inline-кнопки с логинами из `users.txt`;
+- `/configs` - inline-кнопки с логинами из `users-multi.txt`;
 - тап по логину -> бот присылает конфиг в code block + кнопку `Удалить конфиг`;
-- `Удалить конфиг` удаляет логин из `users.txt` и снимает лимит для привязанного Telegram user;
+- `Удалить конфиг` удаляет логин из `users-multi.txt`, применяет изменения и снимает лимит для привязанного Telegram user;
 - `/cancel` - отмена текущего admin-flow.
+
+Старый режим `1 пароль = 1 порт` не удален. Если нужен legacy-режим для старых процедур, переопредели пути скриптов в `bot/.env` на `issue_ss_config.sh` / `print_ss_config.sh` / `remove_ss_user.sh` / `list_ss_users.sh` и `users.txt`.
 
 Файлы:
 
@@ -121,6 +123,8 @@ cp bot/.env.example bot/.env
 - `PRINT_SCRIPT_PATH` (по умолчанию уже задан)
 - `REMOVE_SCRIPT_PATH` (по умолчанию уже задан)
 - `LIST_USERS_SCRIPT_PATH` (по умолчанию уже задан)
+- `APPLY_SCRIPT_PATH` (по умолчанию уже задан)
+- `OPENSOCKS_USERS_FILE` (по умолчанию: `deploy/users-multi.txt`)
 
 Подключи сервис:
 
