@@ -11,7 +11,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    ReplyKeyboardMarkup,
+    Update,
+)
 from telegram.constants import ParseMode
 from telegram.ext import (
     Application,
@@ -248,6 +253,25 @@ def delete_keyboard(username: str) -> InlineKeyboardMarkup:
     )
 
 
+def admin_commands_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            ["/newcfg", "/users"],
+            ["/configs", "/cancel"],
+        ],
+        resize_keyboard=True,
+        one_time_keyboard=False,
+    )
+
+
+def user_commands_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(
+        keyboard=[["/request"]],
+        resize_keyboard=True,
+        one_time_keyboard=False,
+    )
+
+
 def _extract_config(stdout: str) -> str:
     lines = [line.strip() for line in stdout.splitlines() if line.strip()]
     return lines[-1] if lines else ""
@@ -280,12 +304,18 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "/configs - inline список конфигов\n"
             "/cancel - отменить текущее ожидание"
         )
+        reply_markup = admin_commands_keyboard()
     else:
         text = (
             "Нажмите /request чтобы запросить конфиг.\n"
             "После подтверждения админом бот пришлет вам `ss://` ссылку."
         )
-    await update.effective_message.reply_text(text, parse_mode=ParseMode.MARKDOWN)
+        reply_markup = user_commands_keyboard()
+    await update.effective_message.reply_text(
+        text,
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=reply_markup,
+    )
 
 
 async def cmd_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
