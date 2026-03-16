@@ -6,6 +6,7 @@ import json
 import os
 import re
 import secrets
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from html import escape
@@ -19,6 +20,7 @@ from telegram import (
     Update,
 )
 from telegram.constants import ParseMode
+from telegram.error import NetworkError, TelegramError, TimedOut
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -238,6 +240,28 @@ class StateStore:
             await self._save_locked()
             return value
 
+    async def mark_request_issued(self, req_id: str, user_id: int, login: str) -> None:
+        async with self.lock:
+            request = self.data["requests"].get(req_id)
+            if request:
+                request["status"] = "issued"
+                request["issued_login"] = login
+                request["issued_at"] = datetime.now(timezone.utc).isoformat()
+                self.data["requests"][req_id] = request
+
+            self.data["issued_login_by_user"][str(user_id)] = login
+            self.data["active_by_user"].pop(str(user_id), None)
+
+            for admin_id, action in list(self.data["awaiting_admin_action"].items()):
+                if (
+                    isinstance(action, dict)
+                    and action.get("type") == "approve_request"
+                    and action.get("request_id") == req_id
+                ):
+                    del self.data["awaiting_admin_action"][admin_id]
+
+            await self._save_locked()
+
 
 async def run_script(*cmd: str) -> tuple[int, str, str]:
     proc = await asyncio.create_subprocess_exec(
@@ -249,6 +273,25 @@ async def run_script(*cmd: str) -> tuple[int, str, str]:
     return proc.returncode, out.decode("utf-8", errors="replace"), err.decode(
         "utf-8", errors="replace"
     )
+
+
+async def retry_telegram_call(
+    func: Callable[[], Awaitable[Any]], attempts: int = 3, base_delay: float = 1.0
+) -> Any:
+    last_error: TelegramError | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return await func()
+        except (TimedOut, NetworkError) as exc:
+            last_error = exc
+            if attempt >= attempts:
+                break
+            await asyncio.sleep(base_delay * attempt)
+
+    if last_error is not None:
+        raise last_error
+
+    raise RuntimeError("retry_telegram_call failed without TelegramError")
 
 
 def is_admin(update: Update, settings: Settings) -> bool:
@@ -350,27 +393,38 @@ def format_config_message(config: str, username: str | None = None) -> str:
 async def send_wonder_instructions(
     context: ContextTypes.DEFAULT_TYPE, chat_id: int
 ) -> None:
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text="0. Скачайте подходящее приложение из сообщения выше",
+    await retry_telegram_call(
+        lambda: context.bot.send_message(
+            chat_id=chat_id,
+            text="0. Скачайте подходящее приложение из сообщения выше",
+        )
     )
 
     for filename, caption in GUIDE_IMAGE_STEPS:
         photo_path = GUIDE_ASSETS_DIR / filename
         if not photo_path.exists():
-            await context.bot.send_message(chat_id=chat_id, text=caption)
+            await retry_telegram_call(
+                lambda caption=caption: context.bot.send_message(
+                    chat_id=chat_id,
+                    text=caption,
+                )
+            )
             continue
 
         with photo_path.open("rb") as photo_file:
-            await context.bot.send_photo(
-                chat_id=chat_id,
-                photo=photo_file,
-                caption=caption,
+            await retry_telegram_call(
+                lambda photo_file=photo_file, caption=caption: context.bot.send_photo(
+                    chat_id=chat_id,
+                    photo=photo_file,
+                    caption=caption,
+                )
             )
 
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text="4. Включайте через большую кнопку и используйте!",
+    await retry_telegram_call(
+        lambda: context.bot.send_message(
+            chat_id=chat_id,
+            text="4. Включайте через большую кнопку и используйте!",
+        )
     )
 
 
@@ -592,19 +646,42 @@ async def on_admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await message.reply_text("Заявка не найдена.")
         return
 
-    await context.bot.send_message(
-        chat_id=int(request["chat_id"]),
-        text=format_config_message(config),
-        parse_mode=ParseMode.HTML,
-        disable_web_page_preview=True,
-    )
-    await send_wonder_instructions(context, int(request["chat_id"]))
-    await message.reply_text(
-        f"Конфиг выдан.\nrequest_id={req_id}\nlogin={login}\nuser_id={request['user_id']}"
-    )
-    await store.set_status(req_id, "issued")
-    await store.set_issued_login(int(request["user_id"]), login)
-    await store.clear_user_active(int(request["user_id"]))
+    user_id = int(request["user_id"])
+    chat_id = int(request["chat_id"])
+    await store.mark_request_issued(req_id, user_id, login)
+
+    delivery_warning = ""
+    try:
+        await retry_telegram_call(
+            lambda: context.bot.send_message(
+                chat_id=chat_id,
+                text=format_config_message(config),
+                parse_mode=ParseMode.HTML,
+                disable_web_page_preview=True,
+            )
+        )
+        await send_wonder_instructions(context, chat_id)
+    except TelegramError as exc:
+        delivery_warning = (
+            "\nВнимание: Telegram не подтвердил доставку пользователю. "
+            f"Проверьте чат пользователя вручную. Ошибка: {exc.__class__.__name__}"
+        )
+
+    try:
+        await retry_telegram_call(
+            lambda: message.reply_text(
+                "Конфиг выдан.\n"
+                f"request_id={req_id}\n"
+                f"login={login}\n"
+                f"user_id={request['user_id']}"
+                f"{delivery_warning}"
+            )
+        )
+    except TelegramError as exc:
+        print(
+            "warning: failed to notify admin after issuing config "
+            f"for request_id={req_id}: {exc.__class__.__name__}: {exc}"
+        )
 
 
 async def cmd_users(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
