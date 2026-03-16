@@ -29,15 +29,9 @@ from telegram.ext import (
 )
 
 USERNAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
-PHONE_GUIDE_URL = (
-    "https://drive.google.com/file/d/1RjaiAbUmZk0BWpaz0vFMhq_E_DZqpXRM/view?usp=sharing"
-)
 IPHONE_APP_URL = "https://apps.apple.com/us/app/happ-proxy-utility/id6504287215?l=ru"
 ANDROID_APP_URL = (
     "https://play.google.com/store/apps/details?id=com.happproxy&pcampaignid=web_share"
-)
-DESKTOP_GUIDE_URL = (
-    "https://drive.google.com/file/d/11t1R3mSg2E-RV60w2032wFh8FhyuI4RU/view?usp=sharing"
 )
 DESKTOP_APP_URL = "https://www.happ.su/main/ru"
 
@@ -331,18 +325,16 @@ def format_config_message(config: str, username: str | None = None) -> str:
     parts: list[str] = []
     if username:
         parts.append(f"Логин: <b>{escape(username)}</b>")
-    parts.append("Ваш конфиг:")
+    parts.append("Ваше чудо:")
     parts.append(f"<pre>{escape(config)}</pre>")
     parts.append(
-        f'<a href="{PHONE_GUIDE_URL}">Инструкция для телефона</a>\n'
         f'<a href="{IPHONE_APP_URL}">Приложение для IPhone</a>\n'
         f'<a href="{ANDROID_APP_URL}">Приложение для Android</a>'
     )
     parts.append(
-        f'<a href="{DESKTOP_GUIDE_URL}">Инструкция для ПК</a>\n'
         f'<a href="{DESKTOP_APP_URL}">Приложение для ПК</a>'
     )
-    parts.append("Вы можете использовать 1 конфиг на нескольких устройствах.")
+    parts.append("Вы можете использовать 1 чудо на нескольких устройствах.")
     return "\n\n".join(parts)
 
 
@@ -359,10 +351,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         reply_markup = admin_commands_keyboard()
     else:
-        text = (
-            "Нажмите /request чтобы запросить конфиг.\n"
-            "После подтверждения админом бот пришлет вам ss:// ссылку."
-        )
+        text = "Привет! Нажмите /request, чтобы запросить чудо."
         reply_markup = user_commands_keyboard()
     await update.effective_message.reply_text(
         text,
@@ -398,7 +387,7 @@ async def cmd_request(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         chat_id=chat.id,
     )
 
-    await update.effective_message.reply_text("Заявка отправлена администратору.")
+    await update.effective_message.reply_text("Ваше чудо уже в пути!🌟")
     username_display = f"@{user.username}" if user.username else "(без username)"
     admin_text = (
         "Новая заявка на конфиг\n"
