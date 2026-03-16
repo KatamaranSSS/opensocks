@@ -34,6 +34,15 @@ ANDROID_APP_URL = (
     "https://play.google.com/store/apps/details?id=com.happproxy&pcampaignid=web_share"
 )
 DESKTOP_APP_URL = "https://www.happ.su/main/ru"
+GUIDE_ASSETS_DIR = Path(__file__).resolve().parent / "assets" / "guide"
+GUIDE_IMAGE_STEPS = (
+    ("step1-copy-key.jpg", "1. Скопируйте ключик нажав на выделенную область"),
+    ("step2-from-buffer.png", '2. В приложении нажмите "Из буфера"'),
+    (
+        "step3-plus-buffer.png",
+        '3. Если у вас уже есть добавленные ключики, нажмите кнопку "+" и потом "вставить из буфера обмена"',
+    ),
+)
 
 
 @dataclass(frozen=True)
@@ -338,6 +347,33 @@ def format_config_message(config: str, username: str | None = None) -> str:
     return "\n\n".join(parts)
 
 
+async def send_wonder_instructions(
+    context: ContextTypes.DEFAULT_TYPE, chat_id: int
+) -> None:
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text="0. Скачайте подходящее приложение из сообщения выше",
+    )
+
+    for filename, caption in GUIDE_IMAGE_STEPS:
+        photo_path = GUIDE_ASSETS_DIR / filename
+        if not photo_path.exists():
+            await context.bot.send_message(chat_id=chat_id, text=caption)
+            continue
+
+        with photo_path.open("rb") as photo_file:
+            await context.bot.send_photo(
+                chat_id=chat_id,
+                photo=photo_file,
+                caption=caption,
+            )
+
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text="4. Включайте через большую кнопку и используйте!",
+    )
+
+
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     settings: Settings = context.application.bot_data["settings"]
     if is_admin(update, settings):
@@ -562,6 +598,7 @@ async def on_admin_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         parse_mode=ParseMode.HTML,
         disable_web_page_preview=True,
     )
+    await send_wonder_instructions(context, int(request["chat_id"]))
     await message.reply_text(
         f"Конфиг выдан.\nrequest_id={req_id}\nlogin={login}\nuser_id={request['user_id']}"
     )
