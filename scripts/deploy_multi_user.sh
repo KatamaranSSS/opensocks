@@ -26,6 +26,28 @@ SS_MULTI_TIMEOUT="${SS_MULTI_TIMEOUT:-60}"
 SS_MULTI_IMAGE="${SS_MULTI_IMAGE:-ghcr.io/shadowsocks/ssserver-rust:latest}"
 SS_MULTI_COMMAND="${SS_MULTI_COMMAND:-ssserver -c /etc/shadowsocks/config.json}"
 SS_MULTI_USERS_FILE="${SS_MULTI_USERS_FILE:-deploy/users-multi.txt}"
+SS_MULTI_WAIT_SECONDS="${SS_MULTI_WAIT_SECONDS:-20}"
+
+wait_for_port() {
+  local protocol="$1"
+  local port="$2"
+  local elapsed=0
+  local ss_args="-lnt"
+
+  if [[ "${protocol}" == "udp" ]]; then
+    ss_args="-lnu"
+  fi
+
+  while (( elapsed < SS_MULTI_WAIT_SECONDS )); do
+    if ss ${ss_args} | grep -q ":${port}\\b"; then
+      return 0
+    fi
+    sleep 1
+    elapsed=$((elapsed + 1))
+  done
+
+  return 1
+}
 
 mkdir -p "$(dirname "${SS_MULTI_USERS_FILE}")"
 touch "${SS_MULTI_USERS_FILE}"
@@ -112,8 +134,7 @@ compose_args=(
 )
 
 # Do not use --remove-orphans here to avoid touching other stacks.
-docker compose "${compose_args[@]}" up -d --pull always --force-recreate ssserver-multi
-docker compose "${compose_args[@]}" ps
+COMPOSE_IGNORE_ORPHANS=True docker compose "${compose_args[@]}" up -d --pull missing --force-recreate ssserver-multi
 
 if [[ "$(docker inspect -f '{{.State.Running}}' opensocks-ssserver-multi 2>/dev/null || true)" != "true" ]]; then
   echo "Shadowsocks multi-user server failed to start." >&2
@@ -122,12 +143,12 @@ if [[ "$(docker inspect -f '{{.State.Running}}' opensocks-ssserver-multi 2>/dev/
 fi
 
 for port in "${port_list[@]}"; do
-  if ! ss -lnt | grep -q ":${port}\\b"; then
+  if ! wait_for_port tcp "${port}"; then
     echo "TCP port ${port} is not listening." >&2
     docker compose "${compose_args[@]}" logs ssserver-multi
     exit 1
   fi
-  if [[ "${SS_MULTI_MODE}" == *"udp"* ]] && ! ss -lnu | grep -q ":${port}\\b"; then
+  if [[ "${SS_MULTI_MODE}" == *"udp"* ]] && ! wait_for_port udp "${port}"; then
     echo "UDP port ${port} is not listening." >&2
     docker compose "${compose_args[@]}" logs ssserver-multi
     exit 1
